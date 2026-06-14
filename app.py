@@ -156,30 +156,44 @@ if run_analysis or st.session_state.demo_mode:
     # 1. LOAD DATA SOURCE
     if st.session_state.demo_mode:
         df = get_mock_data("demo_user")
-        st.session_state.demo_mode = False  # Reset flag after loading
+        st.session_state.demo_mode = False 
         st.info("ℹ️ **Demo Mode:** You are viewing simulated data.")
         
     elif uploaded_file is not None:
         try:
-            # Load and validate the CSV
             df = pd.read_csv(uploaded_file)
             required_cols = ["Product Name", "Price (PHP)", "Current Stock", "Monthly Sold", "Rating"]
             
-            # Validation Check
+            # Check if columns are missing
             if not all(col in df.columns for col in required_cols):
-                st.error(f"❌ **Invalid Format.** Required columns are: {', '.join(required_cols)}")
-                st.stop()
-            st.info("ℹ️ **Analysis Mode:** You are viewing data from your uploaded file.")
+                st.warning("⚠️ **Column Mismatch:** Your file headers don't match our system requirements.")
+                st.write("Please map your CSV columns to the required fields below:")
+                
+                mapping = {}
+                col1, col2 = st.columns(2)
+                for req in required_cols:
+                    mapping[req] = col1.selectbox(f"Select column for '{req}':", df.columns)
+                
+                if st.button("Apply Mapping"):
+                    df = df.rename(columns={v: k for k, v in mapping.items()})
+                    # Keep only the required columns to avoid errors
+                    df = df[required_cols]
+                    st.session_state.mapped_df = df
+                    st.rerun()
+                
+                if "mapped_df" in st.session_state:
+                    df = st.session_state.mapped_df
+                else:
+                    st.stop()
             
         except Exception as e:
             st.error(f"Error reading file: {e}")
             st.stop()
     else:
-        st.error("❌ **No file uploaded.** Please upload your CSV file or click 'Load Demo Data' to initiate the audit.")
+        st.error("❌ Please upload a CSV file or click 'Load Demo Data'.")
         st.stop()
 
-    # --- EVERYTHING BELOW THIS REMAINS YOUR ORIGINAL CODE ---
-    # Data Processing
+    # 2. DATA PROCESSING
     df['Weekly Forecast'] = (df['Monthly Sold'] * 0.25).astype(int)
     
     st.subheader("📊 Sales Overview & Forecast")
