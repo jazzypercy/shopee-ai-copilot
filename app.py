@@ -15,7 +15,7 @@ if "trial_active" not in st.session_state:
 if not st.session_state.trial_active:
     st.title("Welcome to Shopee AI Copilot")
     st.info("Experience the future of inventory management.")
-    st.subheader("Start your 14-day free trial")
+    st.subheader("Start your 2-day free trial")
     st.write("Get full access to the AI insights engine using our sandbox environment.")
     
     if st.button("Start Free Trial"):
@@ -77,7 +77,7 @@ if run_analysis:
         
         try:
             client = genai.Client(api_key=api_key)
-            response = client.models.generate_content(model="gemini-1.5-flash", contents=prompt)
+            response = client.models.generate_content(model="gemini-3.5-flash", contents=prompt)
             
             # Split AI response into two tabs
             full_text = response.text
