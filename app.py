@@ -4,6 +4,7 @@ import os
 from google import genai
 import datetime
 import json
+import altair as alt
 
 # --- PERSISTENT DATA HELPERS ---
 def save_user_trial(email, start_time):
@@ -73,7 +74,6 @@ if get_trial_remaining() == "Expired":
 
 # --- 3. THE APP ZONE ---
 st.warning(f"⚠️ Sandbox Mode: {get_trial_remaining()} remaining in your 1-Day Trial.")
-st.title("🚀 Shopee AI E-Commerce Co-Pilot")
 
 # --- 4. CONTROL PANEL ---
 st.sidebar.header("🛡️ System Control Panel")
@@ -82,13 +82,28 @@ st.sidebar.markdown("### 📦 Supply Parameters")
 st.session_state.LOW_STOCK_THRESHOLD = st.sidebar.slider(
     "Low Stock Level Warning Flag", 5, 1000, st.session_state.LOW_STOCK_THRESHOLD
 )
-run_analysis = st.sidebar.button("Launch Autonomous Store Audit", type="primary", use_container_width=True)
+run_analysis = st.sidebar.button("Analyze My Store", type="primary", use_container_width=True)
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 📩 Need Assistance?")
 st.sidebar.info("📧 **[grantjaspertaneo@gmail.com](mailto:grantjaspertaneo@gmail.com)**")
 
-# --- 5. DATA ENGINE ---
+# --- 5. LANDING PAGE INSTRUCTIONS ---
+if not run_analysis:
+    st.title("🚀 AIRet Copilot")
+    st.subheader("Autonomous Analytics for Modern E-commerce")
+    st.write("""
+    Welcome to your digital partner. To begin your audit:
+    1. **Enter your Shopee username** in the sidebar.
+    2. **Adjust your supply parameters** (if needed) using the slider.
+    3. **Click 'Analyze My Store'** in the sidebar to generate your growth intelligence report.
+    
+    *Our system will automatically calculate demand forecasts, identify inventory risks, 
+    and generate custom marketing assets to maximize your sales velocity.*
+    """)
+    st.info("💡 **Pro Tip:** Ensure you have your Shopee Store username ready for a quick audit.")
+
+# --- 6. DATA ENGINE ---
 def get_mock_data(username):
     products = [f"[{username.upper()}] {item}" for item in [
         "Natural Shampoo", "Body Lotion 20X", "Niacinamide Soap", 
@@ -103,7 +118,7 @@ def get_mock_data(username):
         "Rating": [4.8, 4.9, 4.9, 4.7, 4.5, 4.9, 4.8, 4.7, 4.9, 4.8]
     })
 
-# --- 6. RUNTIME LOGIC ---
+# --- 7. RUNTIME LOGIC ---
 if run_analysis:
     df = get_mock_data(store_username)
     df['Weekly Forecast'] = (df['Monthly Sold'] * 0.25).astype(int)
@@ -117,13 +132,19 @@ if run_analysis:
     st.markdown("---")
     st.markdown("### 📈 Demand vs. Stock Analysis")
     
-    # Chart
-    st.bar_chart(
-        df.set_index('Product Name')[['Current Stock', 'Weekly Forecast']],
-        color=["#60A5FA", "#F87171"] # Blue = Available, Red = Demand
-    )
+    chart_data = df.melt('Product Name', value_vars=['Current Stock', 'Weekly Forecast'], 
+                         var_name='Metric', value_name='Units')
     
-    # Insights
+    chart = alt.Chart(chart_data).mark_bar().encode(
+        x=alt.X('Units', title='Units'),
+        y=alt.Y('Product Name', title='', sort='-x'),
+        color=alt.Color('Metric', scale=alt.Scale(domain=['Current Stock', 'Weekly Forecast'], 
+                                                 range=['#60A5FA', '#F87171'])),
+    ).properties(height=300)
+    st.altair_chart(chart, use_container_width=True)
+    
+    st.write("*(The **Red bars** show predicted customer demand, and the **Blue bars** show what you have available.)*")
+    
     st.markdown("#### 📝 Key Takeaways")
     df['Gap'] = df['Weekly Forecast'] - df['Current Stock']
     riskiest_prod = df.loc[df['Gap'].idxmax()]
@@ -133,9 +154,6 @@ if run_analysis:
     else:
         st.write("👉 **Good News:** Your current stock levels are sufficient to cover predicted demand for all products next week.")
     
-    st.write("*(The **Red bars** show predicted customer demand, and the **Blue bars** show what you have available. When the Red bar is taller than the Blue bar, it's time to reorder.)*")
-    
-    # Final Table
     st.dataframe(
         df.drop(columns=['Gap']), use_container_width=True, hide_index=True,
         column_config={
@@ -145,11 +163,9 @@ if run_analysis:
         }
     )
 
-    # ALERTS
-    low_stock_df = df[df['Current Stock'] <= st.session_state.LOW_STOCK_THRESHOLD]
-    if not low_stock_df.empty:
+    if not df[df['Current Stock'] <= st.session_state.LOW_STOCK_THRESHOLD].empty:
         st.markdown("### 🚨 High Priority Logistics Alerts")
-        for _, row in low_stock_df.iterrows():
+        for _, row in df[df['Current Stock'] <= st.session_state.LOW_STOCK_THRESHOLD].iterrows():
             status = "❌ **OUT OF STOCK**" if row['Current Stock'] == 0 else "⚠️ **Reorder Alert**"
             st.warning(f"{status}: '{row['Product Name']}' has only **{row['Current Stock']}** pieces left.")
     else:
