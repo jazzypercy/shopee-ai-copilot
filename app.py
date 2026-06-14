@@ -115,16 +115,22 @@ st.sidebar.info("📧 **[grantjaspertaneo@gmail.com](mailto:grantjaspertaneo@gma
 if not run_analysis:
     st.title("🚀 Growth Pilot Ai")
     st.subheader("Your Silent Partner in Retail Success.")
-    st.write("""
-    Welcome to your digital partner. To begin your audit:
-    1. **Enter your Shopee username** in the sidebar.
-    2. **Adjust your supply parameters** (if needed) using the slider.
-    3. **Click 'Analyze My Store'** in the sidebar to generate your growth intelligence report.
     
-    *Our system will automatically calculate demand forecasts, identify inventory risks, 
-    and generate custom marketing assets to maximize your sales velocity.*
+    # NEW: Try Demo Data Feature
+    st.warning("New here? You can test the platform without uploading a file.")
+    if st.button("✨ Load Demo Data"):
+        # We manually create the demo data and set the run_analysis flag to True
+        st.session_state.demo_mode = True
+        st.rerun()
+    
+    st.markdown("""
+    ---
+    ### How to start your own audit:
+    1. **Upload your CSV:** Use the sidebar to upload your store's product performance report. 
+    2. **Get the Template:** Download our **CSV Template** in the sidebar if you need to align your data.
+    3. **Configure:** Adjust your supply risk parameters in the sidebar.
+    4. **Generate:** Click **'Analyze My Store'** to see your growth intelligence report.
     """)
-    st.info("💡 **Pro Tip:** Ensure you have your Shopee Store username ready for a quick audit.")
 
 # --- 6. DATA ENGINE ---
 def get_mock_data(username):
