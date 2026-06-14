@@ -52,9 +52,11 @@ def get_mock_data(username):
     })
 
 # --- 6. RUNTIME LOGIC ---
+# --- 6. RUNTIME LOGIC ---
 if run_analysis:
     df = get_mock_data(store_username)
     
+    # 1. Display the DataFrame
     st.dataframe(
         df, use_container_width=True, hide_index=True,
         column_config={
@@ -62,6 +64,54 @@ if run_analysis:
             "Rating": st.column_config.NumberColumn(format="⭐ %.2f")
         }
     )
+
+    # 2. Add this check to prevent NameError
+    threshold = locals().get('LOW_STOCK_THRESHOLD', 25) 
+    
+    # --- ADD THIS BLOCK FOR ALERTS ---
+    low_stock_df = df[df['Current Stock'] <= threshold]
+
+    if not low_stock_df.empty:
+        st.markdown("### 🚨 High Priority Logistics Alerts")
+        for _, row in low_stock_df.iterrows():
+            if row['Current Stock'] == 0:
+                st.error(f"❌ **OUT OF STOCK:** '{row['Product Name']}' is completely depleted!")
+            else:
+                st.warning(f"⚠️ **Reorder Alert:** '{row['Product Name']}' has only **{row['Current Stock']}** pieces left.")
+    else:
+        st.success("✅ All stock levels are currently healthy.")
+    # ---------------------------------
+    
+    top_prod = df.sort_values(by="Monthly Sold", ascending=False).iloc[0]
+    st.markdown(f"### 🧠 Automated Assets for: *{top_prod['Product Name']}*")
+    
+    # --- GRACEFUL AI CALL ---
+    api_key = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", ""))
+    ai_success = False
+    
+    if api_key:
+        try:
+            client = genai.Client(api_key=api_key)
+            prompt = f"Analyze {top_prod['Product Name']}. Output as: [LIVE_SELLING] (script) and [SOCIAL_CAPTION] (Instagram caption)."
+            # Using a generic call; if this still fails, your key might have no quota left.
+            response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
+            
+            full_text = response.text
+            # Simple check to make sure split() doesn't fail
+            if "[LIVE_SELLING]" in full_text and "[SOCIAL_CAPTION]" in full_text:
+                tab1, tab2 = st.tabs(["🎙️ Live Selling", "📱 Social Caption"])
+                with tab1: st.markdown(full_text.split("[LIVE_SELLING]")[1].split("[SOCIAL_CAPTION]")[0])
+                with tab2: st.markdown(full_text.split("[SOCIAL_CAPTION]")[1])
+                ai_success = True
+            else:
+                st.markdown(full_text) # Fallback if AI didn't follow formatting
+                ai_success = True
+        except Exception as e:
+            st.warning(f"AI Service limited: {e}")
+    
+    if not ai_success:
+        st.info("💡 **Fallback Template:**")
+        st.markdown(f"**Check out {top_prod['Product Name']}!** Limited stocks. Mine na before it's gone! #Budol #ShopeePH")
 
 # Insert this directly after the st.dataframe(...) line
     
