@@ -90,8 +90,8 @@ st.sidebar.info("📧 **[grantjaspertaneo@gmail.com](mailto:grantjaspertaneo@gma
 
 # --- 5. LANDING PAGE INSTRUCTIONS ---
 if not run_analysis:
-    st.title("🚀 AIRet Copilot")
-    st.subheader("Autonomous Analytics for Modern E-commerce")
+    st.title("🚀 Growth Pilot Ai")
+    st.subheader("Your Silent Partner in Retail Success.")
     st.write("""
     Welcome to your digital partner. To begin your audit:
     1. **Enter your Shopee username** in the sidebar.
