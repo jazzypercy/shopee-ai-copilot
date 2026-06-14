@@ -3,40 +3,38 @@ import pandas as pd
 import os
 from google import genai
 
-# --- 1. PAGE CONFIGURATION ---
+# --- 1. CONFIGURATION ---
 st.set_page_config(page_title="AI E-Commerce Co-Pilot", layout="wide", page_icon="🛍️")
 
-# --- 2. SESSION STATE (The Trial Gate) ---
+# Persistent State Initialization
 if "trial_active" not in st.session_state:
     st.session_state.trial_active = False
+if "LOW_STOCK_THRESHOLD" not in st.session_state:
+    st.session_state.LOW_STOCK_THRESHOLD = 25
 
+# --- 2. TRIAL GATE ---
 if not st.session_state.trial_active:
     st.title("Welcome to Shopee AI Copilot")
-   # Change these two lines in your existing code:
     st.info("Experience the future of inventory management with our 2-Day Trial.")
     if st.button("Start 2-Day Free Trial"):
         st.session_state.trial_active = True
         st.rerun()
     st.stop()
 
-# --- 3. THE APP ZONE ---
-st.warning("⚠️ Sandbox Mode: Using sample inventory data.")
+# --- 3. APP UI ---
+st.warning("⚠️ Sandbox Mode: Using sample inventory data (Trial: 2 Days remaining).")
 st.title("🚀 Shopee AI E-Commerce Co-Pilot")
-st.markdown("Automate inventory velocity checking and instantly generate sales content.")
-st.markdown("---")
 
 # --- 4. CONTROL PANEL ---
 st.sidebar.header("🛡️ System Control Panel")
 store_username = st.sidebar.text_input("Target Store Username", value="asepskin_ph")
-
-# --- ADD THESE LINES HERE ---
 st.sidebar.markdown("### 📦 Supply Parameters")
-LOW_STOCK_THRESHOLD = st.sidebar.slider("Low Stock Level Warning Flag", 5, 1000, 25)
-# ----------------------------
-
+st.session_state.LOW_STOCK_THRESHOLD = st.sidebar.slider(
+    "Low Stock Level Warning Flag", 5, 1000, st.session_state.LOW_STOCK_THRESHOLD
+)
 run_analysis = st.sidebar.button("Launch Autonomous Store Audit", type="primary", use_container_width=True)
 
-# --- 5. DATA ENGINE (Updated to include Current Stock) ---
+# --- 5. DATA ENGINE ---
 def get_mock_data(username):
     products = [f"[{username.upper()}] {item}" for item in [
         "Natural Shampoo", "Body Lotion 20X", "Niacinamide Soap", 
@@ -46,17 +44,15 @@ def get_mock_data(username):
     return pd.DataFrame({
         "Product Name": products,
         "Price (PHP)": [158.0, 115.0, 59.0, 159.0, 125.0, 299.0, 89.0, 199.0, 75.0, 249.0],
-        "Current Stock": [14, 142, 8, 410, 50, 55, 30, 22, 120, 15], # Added Stock back
+        "Current Stock": [14, 142, 8, 410, 50, 55, 30, 22, 120, 15],
         "Monthly Sold": [340, 510, 1200, 850, 0, 150, 400, 95, 600, 210],
         "Rating": [4.8, 4.9, 4.9, 4.7, 4.5, 4.9, 4.8, 4.7, 4.9, 4.8]
     })
 
 # --- 6. RUNTIME LOGIC ---
-# --- 6. RUNTIME LOGIC ---
 if run_analysis:
     df = get_mock_data(store_username)
     
-    # 1. Display the DataFrame
     st.dataframe(
         df, use_container_width=True, hide_index=True,
         column_config={
@@ -65,12 +61,8 @@ if run_analysis:
         }
     )
 
-    # 2. Add this check to prevent NameError
-    threshold = locals().get('LOW_STOCK_THRESHOLD', 25) 
-    
-    # --- ADD THIS BLOCK FOR ALERTS ---
-    low_stock_df = df[df['Current Stock'] <= threshold]
-
+    # ALERTS
+    low_stock_df = df[df['Current Stock'] <= st.session_state.LOW_STOCK_THRESHOLD]
     if not low_stock_df.empty:
         st.markdown("### 🚨 High Priority Logistics Alerts")
         for _, row in low_stock_df.iterrows():
@@ -80,75 +72,31 @@ if run_analysis:
                 st.warning(f"⚠️ **Reorder Alert:** '{row['Product Name']}' has only **{row['Current Stock']}** pieces left.")
     else:
         st.success("✅ All stock levels are currently healthy.")
-    # ---------------------------------
-    
+
+    # AI ASSETS
     top_prod = df.sort_values(by="Monthly Sold", ascending=False).iloc[0]
     st.markdown(f"### 🧠 Automated Assets for: *{top_prod['Product Name']}*")
     
-    # --- GRACEFUL AI CALL ---
     api_key = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", ""))
     ai_success = False
     
     if api_key:
         try:
             client = genai.Client(api_key=api_key)
-            prompt = f"Analyze {top_prod['Product Name']}. Output as: [LIVE_SELLING] (script) and [SOCIAL_CAPTION] (Instagram caption)."
-            # Using a generic call; if this still fails, your key might have no quota left.
-            response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
+            # gemini-3.5-flash is the current stable production standard as of June 2026
+            response = client.models.generate_content(
+                model="gemini-3.5-flash", 
+                contents=f"Analyze {top_prod['Product Name']}. Output as: [LIVE_SELLING] (script) and [SOCIAL_CAPTION] (Instagram caption)."
+            )
             
             full_text = response.text
-            # Simple check to make sure split() doesn't fail
             if "[LIVE_SELLING]" in full_text and "[SOCIAL_CAPTION]" in full_text:
                 tab1, tab2 = st.tabs(["🎙️ Live Selling", "📱 Social Caption"])
                 with tab1: st.markdown(full_text.split("[LIVE_SELLING]")[1].split("[SOCIAL_CAPTION]")[0])
                 with tab2: st.markdown(full_text.split("[SOCIAL_CAPTION]")[1])
                 ai_success = True
-            else:
-                st.markdown(full_text) # Fallback if AI didn't follow formatting
-                ai_success = True
         except Exception as e:
-            st.warning(f"AI Service limited: {e}")
-    
-    if not ai_success:
-        st.info("💡 **Fallback Template:**")
-        st.markdown(f"**Check out {top_prod['Product Name']}!** Limited stocks. Mine na before it's gone! #Budol #ShopeePH")
-
-# Insert this directly after the st.dataframe(...) line
-    
-# --- ADD THIS BLOCK FOR ALERTS ---
-low_stock_df = df[df['Current Stock'] <= LOW_STOCK_THRESHOLD]
-
-if not low_stock_df.empty:
-    st.markdown("### 🚨 High Priority Logistics Alerts")
-    for _, row in low_stock_df.iterrows():
-        if row['Current Stock'] == 0:
-            st.error(f"❌ **OUT OF STOCK:** '{row['Product Name']}' is completely depleted!")
-        else:
-            st.warning(f"⚠️ **Reorder Alert:** '{row['Product Name']}' has only **{row['Current Stock']}** pieces left.")
-else:
-    st.success("✅ All stock levels are currently healthy.")
-# ---------------------------------
-    
-    top_prod = df.sort_values(by="Monthly Sold", ascending=False).iloc[0]
-    st.markdown(f"### 🧠 Automated Assets for: *{top_prod['Product Name']}*")
-    
-    # --- GRACEFUL AI CALL ---
-    api_key = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", ""))
-    ai_success = False
-    
-    if api_key:
-        try:
-            client = genai.Client(api_key=api_key)
-            prompt = f"Analyze {top_prod['Product Name']}. Output as: [LIVE_SELLING] (script) and [SOCIAL_CAPTION] (Instagram caption)."
-            response = client.models.generate_content(model="gemini-1.5-flash", contents=prompt)
-            
-            full_text = response.text
-            tab1, tab2 = st.tabs(["🎙️ Live Selling", "📱 Social Caption"])
-            with tab1: st.markdown(full_text.split("[LIVE_SELLING]")[1].split("[SOCIAL_CAPTION]")[0])
-            with tab2: st.markdown(full_text.split("[SOCIAL_CAPTION]")[1])
-            ai_success = True
-        except Exception as e:
-            st.warning("AI Service limited (Quota reached). Using fallback template.")
+            st.warning(f"AI Service limited or key issue: {e}")
     
     if not ai_success:
         st.info("💡 **Fallback Template:**")
