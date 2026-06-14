@@ -77,7 +77,7 @@ st.title("🚀 Shopee AI E-Commerce Co-Pilot")
 
 # --- 4. CONTROL PANEL ---
 st.sidebar.header("🛡️ System Control Panel")
-store_username = st.sidebar.text_input("Target Store Username", value="asepskin_ph")
+store_username = st.sidebar.text_input("Target Store Username", value="samplestore_ph")
 st.sidebar.markdown("### 📦 Supply Parameters")
 st.session_state.LOW_STOCK_THRESHOLD = st.sidebar.slider(
     "Low Stock Level Warning Flag", 5, 1000, st.session_state.LOW_STOCK_THRESHOLD
