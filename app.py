@@ -115,14 +115,29 @@ if run_analysis:
     col3.metric("Avg. Forecast Accuracy", "92%")
     
     st.markdown("---")
-    st.markdown("### 📈 Product Performance Trend")
-    st.line_chart(
-        df.set_index('Product Name')[['Monthly Sold', 'Weekly Forecast']],
-        color=["#FF4B4B", "#00CC96"]
+    st.markdown("### 📈 Demand vs. Stock Analysis")
+    
+    # Chart
+    st.bar_chart(
+        df.set_index('Product Name')[['Current Stock', 'Weekly Forecast']],
+        color=["#60A5FA", "#F87171"] # Blue = Available, Red = Demand
     )
     
+    # Insights
+    st.markdown("#### 📝 Key Takeaways")
+    df['Gap'] = df['Weekly Forecast'] - df['Current Stock']
+    riskiest_prod = df.loc[df['Gap'].idxmax()]
+    
+    if riskiest_prod['Gap'] > 0:
+        st.write(f"👉 **Critical Alert:** Your top demand risk is **{riskiest_prod['Product Name']}**. You are predicted to sell **{riskiest_prod['Weekly Forecast']}** units next week, but only have **{riskiest_prod['Current Stock']}** in stock.")
+    else:
+        st.write("👉 **Good News:** Your current stock levels are sufficient to cover predicted demand for all products next week.")
+    
+    st.write("*(The **Red bars** show predicted customer demand, and the **Blue bars** show what you have available. When the Red bar is taller than the Blue bar, it's time to reorder.)*")
+    
+    # Final Table
     st.dataframe(
-        df, use_container_width=True, hide_index=True,
+        df.drop(columns=['Gap']), use_container_width=True, hide_index=True,
         column_config={
             "Price (PHP)": st.column_config.NumberColumn(format="₱%.2f"),
             "Rating": st.column_config.NumberColumn(format="⭐ %.2f"),
