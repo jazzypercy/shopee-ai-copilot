@@ -107,31 +107,43 @@ def get_mock_data(username):
         "Rating": [4.8, 4.9, 4.9, 4.7, 4.5, 4.9, 4.8, 4.7, 4.9, 4.8]
     })
 
-# --- 6. RUNTIME LOGIC ---
+# --- 6. RUNTIME LOGIC (Mobile-Optimized) ---
 if run_analysis:
     df = get_mock_data(store_username)
     df['Weekly Forecast'] = (df['Monthly Sold'] * 0.25).astype(int)
     
-    st.subheader("📊 Sales Overview & Forecast")
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Total Monthly Sales", f"{df['Monthly Sold'].sum():,}")
-    col2.metric("Total Inventory Value", f"₱{ (df['Price (PHP)'] * df['Current Stock']).sum():,.0f}")
-    col3.metric("Avg. Forecast Accuracy", "92%")
+    # MOBILE-FRIENDLY KPI CARDS
+    st.subheader("📊 Performance Summary")
+    # Columns stack automatically on mobile
+    col1, col2 = st.columns(2)
+    col1.metric("Monthly Sales", f"{df['Monthly Sold'].sum():,}")
+    col2.metric("Stock Value", f"₱{ (df['Price (PHP)'] * df['Current Stock']).sum():,.0f}")
     
-    st.markdown("### 📈 Product Performance Trend")
-    st.line_chart(
-        df.set_index('Product Name')[['Monthly Sold', 'Weekly Forecast']],
-        color=["#FF4B4B", "#00CC96"]
+    st.markdown("---")
+    
+    # SIMPLIFIED TABLE FOR NEW USERS
+    st.subheader("📦 Inventory Insights")
+    
+    # Create a simplified view for the table
+    display_df = df.copy()
+    display_df['Status'] = display_df.apply(
+        lambda x: '🚨 Urgent' if x['Current Stock'] < st.session_state.LOW_STOCK_THRESHOLD else '✅ Good', axis=1
     )
     
+    # Display only key columns for mobile readability
     st.dataframe(
-        df, use_container_width=True, hide_index=True,
+        display_df[['Product Name', 'Current Stock', 'Weekly Forecast', 'Status']],
+        use_container_width=True, 
+        hide_index=True,
         column_config={
-            "Price (PHP)": st.column_config.NumberColumn(format="₱%.2f"),
-            "Weekly Forecast": st.column_config.NumberColumn(help="Predicted sales for next 7 days")
+            "Weekly Forecast": st.column_config.NumberColumn("Next 7 Days", help="Projected sales volume"),
+            "Status": st.column_config.TextColumn("Status")
         }
     )
 
+    # VISUAL CHART (Keep simple for mobile)
+    st.markdown("### 📈 Demand Trend")
+    st.line_chart(df.set_index('Product Name')[['Monthly Sold', 'Weekly Forecast']])
     # ALERTS
     low_stock_df = df[df['Current Stock'] <= st.session_state.LOW_STOCK_THRESHOLD]
     if not low_stock_df.empty:
