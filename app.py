@@ -3,46 +3,70 @@ import pandas as pd
 import os
 from google import genai
 import datetime
+import json
 
-# --- TRIAL LOGIC INITIALIZATION ---
-if "trial_active" not in st.session_state:
-    st.session_state.trial_active = False
-if "trial_start_time" not in st.session_state:
-    st.session_state.trial_start_time = None
-if "LOW_STOCK_THRESHOLD" not in st.session_state:
-    st.session_state.LOW_STOCK_THRESHOLD = 25
+# --- PERSISTENT DATA HELPERS ---
+def save_user_trial(email, start_time):
+    data = {"email": email, "start_time": start_time.isoformat()}
+    with open("users.json", "w") as f:
+        json.dump(data, f)
+
+def get_user_trial(email):
+    if os.path.exists("users.json"):
+        with open("users.json", "r") as f:
+            try:
+                data = json.load(f)
+                if data["email"] == email:
+                    return datetime.datetime.fromisoformat(data["start_time"])
+            except:
+                return None
+    return None
 
 def get_trial_remaining():
-    if not st.session_state.trial_start_time:
+    if not st.session_state.get("trial_start_time"):
         return "N/A"
     elapsed = datetime.datetime.now() - st.session_state.trial_start_time
     remaining = (datetime.timedelta(hours=24) - elapsed)
     if remaining.total_seconds() <= 0:
         return "Expired"
-    hours, remainder = divmod(remaining.seconds, 3600)
+    hours, remainder = divmod(int(remaining.total_seconds()), 3600)
     minutes, _ = divmod(remainder, 60)
     return f"{hours}h {minutes}m"
 
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="AI E-Commerce Co-Pilot", layout="wide", page_icon="🛍️")
 
-# Persistent State Initialization
 if "trial_active" not in st.session_state:
     st.session_state.trial_active = False
 if "LOW_STOCK_THRESHOLD" not in st.session_state:
     st.session_state.LOW_STOCK_THRESHOLD = 25
+if "user_email" not in st.session_state:
+    st.session_state.user_email = None
 
-# --- 2. TRIAL GATE ---
+# --- 2. SESSION STATE (The Email-Based Trial Gate) ---
 if not st.session_state.trial_active:
     st.title("Welcome to Shopee AI Copilot")
-    st.info("Experience the future of inventory management with our 1-Day Trial.")
+    st.info("Enter your email to start your 1-Day Free Trial.")
+    
+    email_input = st.text_input("Enter your email address:")
+    
     if st.button("Start 1-Day Free Trial"):
-        st.session_state.trial_active = True
-        st.session_state.trial_start_time = datetime.datetime.now()
-        st.rerun()
+        if email_input:
+            existing_start = get_user_trial(email_input)
+            if existing_start:
+                st.session_state.trial_start_time = existing_start
+            else:
+                st.session_state.trial_start_time = datetime.datetime.now()
+                save_user_trial(email_input, st.session_state.trial_start_time)
+            
+            st.session_state.user_email = email_input
+            st.session_state.trial_active = True
+            st.rerun()
+        else:
+            st.warning("Please enter a valid email address.")
     st.stop()
 
-# Check if expired
+# Check for Expiry
 if get_trial_remaining() == "Expired":
     st.error("⏰ Your 1-Day Free Trial has expired.")
     if st.button("Contact Support to Upgrade"):
@@ -64,12 +88,9 @@ st.session_state.LOW_STOCK_THRESHOLD = st.sidebar.slider(
 
 run_analysis = st.sidebar.button("Launch Autonomous Store Audit", type="primary", use_container_width=True)
 
-# --- CONTACT SECTION ---
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 📩 Need Assistance?")
-st.sidebar.write("Have questions or want to upgrade your plan?")
 st.sidebar.info("📧 **[your-email@example.com](mailto:your-email@example.com)**")
-st.sidebar.write("We typically respond within 2 hours.")
 
 # --- 5. DATA ENGINE ---
 def get_mock_data(username):
@@ -89,38 +110,20 @@ def get_mock_data(username):
 # --- 6. RUNTIME LOGIC ---
 if run_analysis:
     df = get_mock_data(store_username)
-    
-    st.dataframe(
-        df, use_container_width=True, hide_index=True,
-        column_config={
-            "Price (PHP)": st.column_config.NumberColumn(format="₱%.2f"),
-            "Rating": st.column_config.NumberColumn(format="⭐ %.2f")
-        }
-    )
-
-    # --- ADD THIS TO YOUR RUNTIME LOGIC ---
-if run_analysis:
-    df = get_mock_data(store_username)
-    
-    # 1. Create Prediction Data
-    # Simple forecast: Next week = 25% of monthly, + a random growth factor
     df['Weekly Forecast'] = (df['Monthly Sold'] * 0.25).astype(int)
     
-    # 2. Display KPI Metrics
     st.subheader("📊 Sales Overview & Forecast")
     col1, col2, col3 = st.columns(3)
     col1.metric("Total Monthly Sales", f"{df['Monthly Sold'].sum():,}")
     col2.metric("Total Inventory Value", f"₱{ (df['Price (PHP)'] * df['Current Stock']).sum():,.0f}")
     col3.metric("Avg. Forecast Accuracy", "92%")
     
-    st.markdown("---")
-    
-    # 3. Add the Trend Chart
     st.markdown("### 📈 Product Performance Trend")
-    # This plots Price vs. Monthly Sold to show the "Velocity" of products
-    st.line_chart(df.set_index('Product Name')[['Monthly Sold', 'Weekly Forecast']])
+    st.line_chart(
+        df.set_index('Product Name')[['Monthly Sold', 'Weekly Forecast']],
+        color=["#FF4B4B", "#00CC96"]
+    )
     
-    # 4. Display the refined table with forecast
     st.dataframe(
         df, use_container_width=True, hide_index=True,
         column_config={
@@ -128,11 +131,6 @@ if run_analysis:
             "Weekly Forecast": st.column_config.NumberColumn(help="Predicted sales for next 7 days")
         }
     )
-    st.line_chart(
-    df.set_index('Product Name')[['Monthly Sold', 'Weekly Forecast']],
-    color=["#FF4B4B", "#00CC96"] # Red for historical, Green for forecast
-)
-    # ... (Rest of your Alert Logic)
 
     # ALERTS
     low_stock_df = df[df['Current Stock'] <= st.session_state.LOW_STOCK_THRESHOLD]
@@ -156,12 +154,10 @@ if run_analysis:
     if api_key:
         try:
             client = genai.Client(api_key=api_key)
-            # gemini-3.5-flash is the current stable production standard as of June 2026
             response = client.models.generate_content(
                 model="gemini-3.5-flash", 
                 contents=f"Analyze {top_prod['Product Name']}. Output as: [LIVE_SELLING] (script) and [SOCIAL_CAPTION] (Instagram caption)."
             )
-            
             full_text = response.text
             if "[LIVE_SELLING]" in full_text and "[SOCIAL_CAPTION]" in full_text:
                 tab1, tab2 = st.tabs(["🎙️ Live Selling", "📱 Social Caption"])
@@ -169,7 +165,7 @@ if run_analysis:
                 with tab2: st.markdown(full_text.split("[SOCIAL_CAPTION]")[1])
                 ai_success = True
         except Exception as e:
-            st.warning(f"AI Service limited or key issue: {e}")
+            st.warning(f"AI Service limited: {e}")
     
     if not ai_success:
         st.info("💡 **Fallback Template:**")
