@@ -120,6 +120,12 @@ def get_mock_data(username):
 
 # --- 7. RUNTIME LOGIC ---
 if run_analysis:
+    SAMPLE_STORE_NAME = "samplestore_ph"
+    
+    if store_username.lower() != SAMPLE_STORE_NAME:
+        st.error(f"❌ Error: Store '{store_username}' not found in demo environment.")
+        st.write(f"This is a limited demo. Please input **{SAMPLE_STORE_NAME}** to experience the features of GrowthPilot AI.")
+        st.stop() # Stops the rest of the code from running
     st.info("ℹ️ **Demo Mode:** You are currently viewing simulated data. All metrics, inventory levels, and forecasts are generated for demonstration purposes only.")
     df = get_mock_data(store_username)
     df['Weekly Forecast'] = (df['Monthly Sold'] * 0.25).astype(int)
