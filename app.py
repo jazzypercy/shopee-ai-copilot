@@ -27,18 +27,25 @@ st.markdown("---")
 # --- 4. CONTROL PANEL ---
 st.sidebar.header("🛡️ System Control Panel")
 store_username = st.sidebar.text_input("Target Store Username", value="asepskin_ph")
+
+# --- ADD THESE LINES HERE ---
+st.sidebar.markdown("### 📦 Supply Parameters")
+LOW_STOCK_THRESHOLD = st.sidebar.slider("Low Stock Level Warning Flag", 5, 1000, 25)
+# ----------------------------
+
 run_analysis = st.sidebar.button("Launch Autonomous Store Audit", type="primary", use_container_width=True)
 
-# --- 5. DATA ENGINE (Expanded to 10 items) ---
+# --- 5. DATA ENGINE (Updated to include Current Stock) ---
 def get_mock_data(username):
     products = [f"[{username.upper()}] {item}" for item in [
-        "Natural Polygonum Shampoo", "Body Lotion 20X", "Niacinamide Soap", 
+        "Natural Shampoo", "Body Lotion 20X", "Niacinamide Soap", 
         "Brightening Sunscreen", "Premium EDP Perfume", "Collagen Serum", 
         "Vitamin C Toner", "Hair Growth Oil", "Aloe Vera Gel", "Matte Lipstick"
     ]]
     return pd.DataFrame({
         "Product Name": products,
         "Price (PHP)": [158.0, 115.0, 59.0, 159.0, 125.0, 299.0, 89.0, 199.0, 75.0, 249.0],
+        "Current Stock": [14, 142, 8, 410, 50, 55, 30, 22, 120, 15], # Added Stock back
         "Monthly Sold": [340, 510, 1200, 850, 0, 150, 400, 95, 600, 210],
         "Rating": [4.8, 4.9, 4.9, 4.7, 4.5, 4.9, 4.8, 4.7, 4.9, 4.8]
     })
