@@ -12,8 +12,9 @@ if "trial_active" not in st.session_state:
 
 if not st.session_state.trial_active:
     st.title("Welcome to Shopee AI Copilot")
-    st.info("Experience the future of inventory management.")
-    if st.button("Start 14-Day Free Trial"):
+   # Change these two lines in your existing code:
+    st.info("Experience the future of inventory management with our 2-Day Trial.")
+    if st.button("Start 2-Day Free Trial"):
         st.session_state.trial_active = True
         st.rerun()
     st.stop()
@@ -61,6 +62,22 @@ if run_analysis:
             "Rating": st.column_config.NumberColumn(format="⭐ %.2f")
         }
     )
+
+# Insert this directly after the st.dataframe(...) line
+    
+# --- ADD THIS BLOCK FOR ALERTS ---
+low_stock_df = df[df['Current Stock'] <= LOW_STOCK_THRESHOLD]
+
+if not low_stock_df.empty:
+    st.markdown("### 🚨 High Priority Logistics Alerts")
+    for _, row in low_stock_df.iterrows():
+        if row['Current Stock'] == 0:
+            st.error(f"❌ **OUT OF STOCK:** '{row['Product Name']}' is completely depleted!")
+        else:
+            st.warning(f"⚠️ **Reorder Alert:** '{row['Product Name']}' has only **{row['Current Stock']}** pieces left.")
+else:
+    st.success("✅ All stock levels are currently healthy.")
+# ---------------------------------
     
     top_prod = df.sort_values(by="Monthly Sold", ascending=False).iloc[0]
     st.markdown(f"### 🧠 Automated Assets for: *{top_prod['Product Name']}*")
