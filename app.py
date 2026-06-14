@@ -4,18 +4,24 @@ import os
 from google import genai
 import datetime
 
-# --- TRIAL PERIOD LOGIC ---
-TRIAL_DURATION_HOURS = 24
-
+# --- TRIAL LOGIC INITIALIZATION ---
+if "trial_active" not in st.session_state:
+    st.session_state.trial_active = False
 if "trial_start_time" not in st.session_state:
     st.session_state.trial_start_time = None
+if "LOW_STOCK_THRESHOLD" not in st.session_state:
+    st.session_state.LOW_STOCK_THRESHOLD = 25
 
-def check_trial_expired():
-    if st.session_state.trial_start_time is None:
-        return False
-    
+def get_trial_remaining():
+    if not st.session_state.trial_start_time:
+        return "N/A"
     elapsed = datetime.datetime.now() - st.session_state.trial_start_time
-    return elapsed.total_seconds() > (TRIAL_DURATION_HOURS * 3600)
+    remaining = (datetime.timedelta(hours=24) - elapsed)
+    if remaining.total_seconds() <= 0:
+        return "Expired"
+    hours, remainder = divmod(remaining.seconds, 3600)
+    minutes, _ = divmod(remainder, 60)
+    return f"{hours}h {minutes}m"
 
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="AI E-Commerce Co-Pilot", layout="wide", page_icon="🛍️")
@@ -26,36 +32,44 @@ if "trial_active" not in st.session_state:
 if "LOW_STOCK_THRESHOLD" not in st.session_state:
     st.session_state.LOW_STOCK_THRESHOLD = 25
 
-# --- 2. SESSION STATE (The Trial Gate) ---
+# --- 2. TRIAL GATE ---
 if not st.session_state.trial_active:
     st.title("Welcome to Shopee AI Copilot")
     st.info("Experience the future of inventory management with our 1-Day Trial.")
-    
     if st.button("Start 1-Day Free Trial"):
         st.session_state.trial_active = True
-        st.session_state.trial_start_time = datetime.datetime.now() # Record start time
+        st.session_state.trial_start_time = datetime.datetime.now()
         st.rerun()
     st.stop()
 
-# If they ARE active, check if they are still within the 1-day limit
-if check_trial_expired():
+# Check if expired
+if get_trial_remaining() == "Expired":
     st.error("⏰ Your 1-Day Free Trial has expired.")
-    if st.button("Contact us to upgrade"):
+    if st.button("Contact Support to Upgrade"):
         st.write("Redirecting to sales...")
     st.stop()
 
-# --- 3. APP UI ---
-st.warning("⚠️ Sandbox Mode: Using sample inventory data (Trial: 2 Days remaining).")
+# --- 3. THE APP ZONE ---
+st.warning(f"⚠️ Sandbox Mode: {get_trial_remaining()} remaining in your 1-Day Trial.")
 st.title("🚀 Shopee AI E-Commerce Co-Pilot")
 
 # --- 4. CONTROL PANEL ---
 st.sidebar.header("🛡️ System Control Panel")
 store_username = st.sidebar.text_input("Target Store Username", value="asepskin_ph")
+
 st.sidebar.markdown("### 📦 Supply Parameters")
 st.session_state.LOW_STOCK_THRESHOLD = st.sidebar.slider(
     "Low Stock Level Warning Flag", 5, 1000, st.session_state.LOW_STOCK_THRESHOLD
 )
+
 run_analysis = st.sidebar.button("Launch Autonomous Store Audit", type="primary", use_container_width=True)
+
+# --- CONTACT SECTION ---
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 📩 Need Assistance?")
+st.sidebar.write("Have questions or want to upgrade your plan?")
+st.sidebar.info("📧 **[your-email@example.com](mailto:your-email@example.com)**")
+st.sidebar.write("We typically respond within 2 hours.")
 
 # --- 5. DATA ENGINE ---
 def get_mock_data(username):
