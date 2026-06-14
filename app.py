@@ -90,7 +90,7 @@ run_analysis = st.sidebar.button("Launch Autonomous Store Audit", type="primary"
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 📩 Need Assistance?")
-st.sidebar.info("📧 **[your-email@example.com](mailto:your-email@example.com)**")
+st.sidebar.info("📧 **[grantjaspertaneo@gmail.com](mailto:grantjaspertaneo@gmail.com)**")
 
 # --- 5. DATA ENGINE ---
 def get_mock_data(username):
