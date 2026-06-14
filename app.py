@@ -142,12 +142,15 @@ if run_analysis:
     chart_data = df.melt('Product Name', value_vars=['Current Stock', 'Weekly Forecast'], 
                          var_name='Metric', value_name='Units')
     
-   chart = alt.Chart(chart_data).mark_bar().encode(
+    # Ensure these lines start with exactly 4 spaces (if inside the if block)
+    chart = alt.Chart(chart_data).mark_bar().encode(
         x=alt.X('Units', title='Units'),
         y=alt.Y('Product Name', title='', sort='-x'),
-        color=alt.Color('Metric', scale=alt.Scale(domain=['Current Stock', 'Weekly Forecast'], range=['#60A5FA', '#F87171'])),
-        tooltip=['Product Name', 'Metric', 'Units'] 
+        color=alt.Color('Metric', scale=alt.Scale(domain=['Current Stock', 'Weekly Forecast'], 
+                                                 range=['#60A5FA', '#F87171'])),
+        tooltip=['Product Name', 'Metric', 'Units']
     ).properties(height=300)
+    
     st.altair_chart(chart, use_container_width=True)
     
     st.write("*(The **Red bars** show predicted customer demand, and the **Blue bars** show what you have available.)*")
