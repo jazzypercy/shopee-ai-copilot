@@ -73,7 +73,7 @@ if get_trial_remaining() == "Expired":
     st.stop()
 
 # --- 3. THE APP ZONE ---
-st.warning(f"⚠️ Sandbox Mode: {get_trial_remaining()} remaining in your 1-Day Trial.")
+st.warning(f"⚠️ Reminder: {get_trial_remaining()} remaining in your 1-Day Trial.")
 
 # --- 4. CONTROL PANEL ---
 st.sidebar.header("🛡️ System Control Panel")
@@ -120,6 +120,7 @@ def get_mock_data(username):
 
 # --- 7. RUNTIME LOGIC ---
 if run_analysis:
+    st.info("ℹ️ **Demo Mode:** You are currently viewing simulated data. All metrics, inventory levels, and forecasts are generated for demonstration purposes only.")
     df = get_mock_data(store_username)
     df['Weekly Forecast'] = (df['Monthly Sold'] * 0.25).astype(int)
     
