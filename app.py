@@ -142,11 +142,13 @@ if run_analysis:
     chart_data = df.melt('Product Name', value_vars=['Current Stock', 'Weekly Forecast'], 
                          var_name='Metric', value_name='Units')
     
-    chart = alt.Chart(chart_data).mark_bar().encode(
+   chart = alt.Chart(chart_data).mark_bar().encode(
         x=alt.X('Units', title='Units'),
         y=alt.Y('Product Name', title='', sort='-x'),
         color=alt.Color('Metric', scale=alt.Scale(domain=['Current Stock', 'Weekly Forecast'], 
                                                  range=['#60A5FA', '#F87171'])),
+        # Adding this line cleans up the hover information:
+        tooltip=['Product Name', 'Metric', 'Units'] 
     ).properties(height=300)
     st.altair_chart(chart, use_container_width=True)
     
