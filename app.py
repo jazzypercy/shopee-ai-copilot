@@ -2,6 +2,33 @@ import streamlit as st
 import pandas as pd
 from curl_cffi import requests
 from google import genai
+import streamlit as st
+
+# 1. Initialize Session State to track if they are in the trial
+if "trial_active" not in st.session_state:
+    st.session_state.trial_active = False
+
+# 2. Define the login logic
+def start_trial():
+    st.session_state.trial_active = True
+
+# 3. If NOT in trial, show the "Gate"
+if not st.session_state.trial_active:
+    st.title("Welcome to Shopee AI Copilot")
+    st.info("Experience the future of inventory management.")
+    st.subheader("Start your 14-day free trial")
+    st.write("Get full access to the AI insights engine using our sandbox environment.")
+    
+    if st.button("Start Free Trial"):
+        start_trial()
+        st.rerun() # Refresh the page to show the app
+    
+    st.stop() # Stop the rest of the app from loading until they click the button
+
+# --- THE REST OF YOUR APP CODE GOES BELOW HERE ---
+# Everything below this line will only run if st.session_state.trial_active is True
+st.sidebar.success("Trial Active: 14 days remaining")
+# ... your existing inventory dashboard code ...
 
 # ----------------- SYSTEM & BRANDING CONFIG -----------------
 st.set_page_config(page_title="AI E-Commerce Co-Pilot", layout="wide", page_icon="🛍️")
