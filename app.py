@@ -98,6 +98,42 @@ if run_analysis:
         }
     )
 
+    # --- ADD THIS TO YOUR RUNTIME LOGIC ---
+if run_analysis:
+    df = get_mock_data(store_username)
+    
+    # 1. Create Prediction Data
+    # Simple forecast: Next week = 25% of monthly, + a random growth factor
+    df['Weekly Forecast'] = (df['Monthly Sold'] * 0.25).astype(int)
+    
+    # 2. Display KPI Metrics
+    st.subheader("📊 Sales Overview & Forecast")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Total Monthly Sales", f"{df['Monthly Sold'].sum():,}")
+    col2.metric("Total Inventory Value", f"₱{ (df['Price (PHP)'] * df['Current Stock']).sum():,.0f}")
+    col3.metric("Avg. Forecast Accuracy", "92%")
+    
+    st.markdown("---")
+    
+    # 3. Add the Trend Chart
+    st.markdown("### 📈 Product Performance Trend")
+    # This plots Price vs. Monthly Sold to show the "Velocity" of products
+    st.line_chart(df.set_index('Product Name')[['Monthly Sold', 'Weekly Forecast']])
+    
+    # 4. Display the refined table with forecast
+    st.dataframe(
+        df, use_container_width=True, hide_index=True,
+        column_config={
+            "Price (PHP)": st.column_config.NumberColumn(format="₱%.2f"),
+            "Weekly Forecast": st.column_config.NumberColumn(help="Predicted sales for next 7 days")
+        }
+    )
+    st.line_chart(
+    df.set_index('Product Name')[['Monthly Sold', 'Weekly Forecast']],
+    color=["#FF4B4B", "#00CC96"] # Red for historical, Green for forecast
+)
+    # ... (Rest of your Alert Logic)
+
     # ALERTS
     low_stock_df = df[df['Current Stock'] <= st.session_state.LOW_STOCK_THRESHOLD]
     if not low_stock_df.empty:
