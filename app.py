@@ -105,11 +105,11 @@ if not run_analysis:
 
 # --- 6. DATA ENGINE ---
 def get_mock_data(username):
-    products = [f"[{username.upper()}] {item}" for item in [
+    products = [
         "Natural Shampoo", "Body Lotion 20X", "Niacinamide Soap", 
         "Brightening Sunscreen", "Premium EDP Perfume", "Collagen Serum", 
         "Vitamin C Toner", "Hair Growth Oil", "Aloe Vera Gel", "Matte Lipstick"
-    ]]
+    ]
     return pd.DataFrame({
         "Product Name": products,
         "Price (PHP)": [158.0, 115.0, 59.0, 159.0, 125.0, 299.0, 89.0, 199.0, 75.0, 249.0],
