@@ -2,6 +2,20 @@ import streamlit as st
 import pandas as pd
 import os
 from google import genai
+import datetime
+
+# --- TRIAL PERIOD LOGIC ---
+TRIAL_DURATION_HOURS = 24
+
+if "trial_start_time" not in st.session_state:
+    st.session_state.trial_start_time = None
+
+def check_trial_expired():
+    if st.session_state.trial_start_time is None:
+        return False
+    
+    elapsed = datetime.datetime.now() - st.session_state.trial_start_time
+    return elapsed.total_seconds() > (TRIAL_DURATION_HOURS * 3600)
 
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="AI E-Commerce Co-Pilot", layout="wide", page_icon="🛍️")
@@ -12,13 +26,22 @@ if "trial_active" not in st.session_state:
 if "LOW_STOCK_THRESHOLD" not in st.session_state:
     st.session_state.LOW_STOCK_THRESHOLD = 25
 
-# --- 2. TRIAL GATE ---
+# --- 2. SESSION STATE (The Trial Gate) ---
 if not st.session_state.trial_active:
     st.title("Welcome to Shopee AI Copilot")
-    st.info("Experience the future of inventory management with our 2-Day Trial.")
-    if st.button("Start 2-Day Free Trial"):
+    st.info("Experience the future of inventory management with our 1-Day Trial.")
+    
+    if st.button("Start 1-Day Free Trial"):
         st.session_state.trial_active = True
+        st.session_state.trial_start_time = datetime.datetime.now() # Record start time
         st.rerun()
+    st.stop()
+
+# If they ARE active, check if they are still within the 1-day limit
+if check_trial_expired():
+    st.error("⏰ Your 1-Day Free Trial has expired.")
+    if st.button("Contact us to upgrade"):
+        st.write("Redirecting to sales...")
     st.stop()
 
 # --- 3. APP UI ---
