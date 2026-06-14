@@ -115,25 +115,29 @@ st.sidebar.markdown("### 📩 Need Assistance?")
 st.sidebar.info("📧 **[grantjaspertaneo@gmail.com](mailto:grantjaspertaneo@gmail.com)**")
 
 # --- 5. LANDING PAGE INSTRUCTIONS ---
-if not run_analysis:
+if not run_analysis and not st.session_state.demo_mode:
     st.title("🚀 Growth Pilot Ai")
     st.subheader("Your Silent Partner in Retail Success.")
     
-    # NEW: Try Demo Data Feature
-    st.warning("New here? You can test the platform without uploading a file.")
+    # How-To Popover
+    with st.popover("📖 How to use GrowthPilot AI"):
+        st.markdown("""
+        ### Getting Started
+        1. **Load Data:** Click **"✨ Load Demo Data"** to test with sample data, or upload your own CSV file in the sidebar.
+        2. **Configure:** Set your "Low Stock" threshold in the sidebar to flag items that need reordering.
+        3. **Analyze:** Click **"Analyze My Store"** to view your forecasts and generate AI marketing assets.
+        
+        ### How to get your CSV from Shopee
+        1. Go to your **Shopee Seller Center**.
+        2. Navigate to **"My Products"** or **"Data & Reports"**.
+        3. Look for the **"Export"** button to download your product list as a CSV.
+        4. If your columns don't match, simply use our **"Download CSV Template"** in the sidebar to reformat your data.
+        """)
+
+    # Demo Button
     if st.button("✨ Load Demo Data"):
-        # We manually create the demo data and set the run_analysis flag to True
         st.session_state.demo_mode = True
         st.rerun()
-    
-    st.markdown("""
-    ---
-    ### How to start your own audit:
-    1. **Upload your CSV:** Use the sidebar to upload your store's product performance report. 
-    2. **Get the Template:** Download our **CSV Template** in the sidebar if you need to align your data.
-    3. **Configure:** Adjust your supply risk parameters in the sidebar.
-    4. **Generate:** Click **'Analyze My Store'** to see your growth intelligence report.
-    """)
 
 # --- 6. DATA ENGINE ---
 def get_mock_data(username):
