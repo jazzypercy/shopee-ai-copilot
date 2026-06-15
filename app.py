@@ -158,48 +158,63 @@ st.sidebar.caption("v1.0.0 | GrowthPilot AI © 2026")
 
 # --- 5 & 6. UNIFIED UI & RUNTIME LOGIC ---
 
-# 1. THE MASTER ANALYZE TRIGGER
-# We clear the previous data first to ensure we are always looking at the freshest input
-if run_analysis:
-    # Reset the dashboard state for a fresh analysis
-    st.session_state.df_final = None 
+# 1. CENTRAL DATA PROCESSING ENGINE
+def process_data(file_obj=None, use_demo=False):
+    """The 'Brain' that converts inputs into a clean DataFrame."""
+    try:
+        if use_demo:
+            return get_mock_data("demo_user")
+        
+        if file_obj:
+            if not file_obj.name.endswith('.csv'):
+                st.error("❌ Invalid file format. Please upload a .csv file.")
+                return None
+            
+            df_raw = pd.read_csv(file_obj)
+            required = ["Product Name", "Price (PHP)", "Current Stock", "Monthly Sold", "Rating"]
+            
+            # Smart Mapping Logic
+            mapping = {}
+            for req in required:
+                # Look for column name match, otherwise default to index position
+                match = next((col for col in df_raw.columns if req.lower() in col.lower() or col.lower() in req.lower()), None)
+                mapping[req] = match if match else df_raw.columns[required.index(req)]
+            
+            # Return cleaned and renamed DataFrame
+            return df_raw.rename(columns={v: k for k, v in mapping.items()})[required]
+    except Exception as e:
+        st.error(f"🙏 Error processing data: {e}")
+        return None
+    return None
     
-    # A. Check if user wants Demo OR uploaded a file
-    if st.session_state.get("demo_mode", False):
-        st.session_state.df_final = get_mock_data("demo_user")
-        st.session_state.show_demo_info = True
+# 2. TRIGGER LOGIC: Detects user intent
+# This logic fires when you click "Analyze My Store" OR "Load Demo"
+if run_analysis or st.session_state.get("demo_mode", False):
+    
+    # Determine the source
+    use_demo = st.session_state.get("demo_mode", False)
+    
+    # Process the data using our "Brain"
+    result = process_data(file_obj=uploaded_file, use_demo=use_demo)
+    
+    if result is not None:
+        st.session_state.df_final = result
         st.session_state.demo_mode = False # Reset demo flag
-    
-    elif uploaded_file is not None:
-        # B. File Format Validator
-        if not uploaded_file.name.endswith('.csv'):
-            st.error("❌ Invalid file format. Please upload a .csv file.")
-        else:
-            try:
-                df_raw = pd.read_csv(uploaded_file)
-                required_cols = ["Product Name", "Price (PHP)", "Current Stock", "Monthly Sold", "Rating"]
-                
-                # Auto-Mapping
-                mapping = {}
-                for req in required_cols:
-                    matches = [col for col in df_raw.columns if req.lower() in col.lower() or col.lower() in req.lower()]
-                    mapping[req] = matches[0] if matches else df_raw.columns[required_cols.index(req)]
-                
-                st.session_state.df_final = df_raw.rename(columns={v: k for k, v in mapping.items()})[required_cols]
-                st.session_state.show_demo_info = False
-            except Exception as e:
-                st.error(f"🙏 Error processing file: {e}")
     else:
-        # C. Warning "Popup"
-        st.warning("⚠️ Please upload a CSV file or enable Demo Mode first.")
-
-# 2. RUNTIME ANALYSIS (Display Area)
-if "df_final" in st.session_state and st.session_state.df_final is not None:
-    df = st.session_state.df_final
+        # --- THE POPUP LOGIC ---
+        # If result is None, the processing failed or there was no file
+        if not use_demo and uploaded_file is None:
+            st.warning("⚠️ Please upload a CSV file or enable Demo Mode first.")
+        st.session_state.df_final = None # Ensure nothing renders
+        
+   # 3. DASHBOARD DISPLAY OR LANDING PAGE
+    if st.session_state.get("df_final") is not None:
+        df = st.session_state.df_final
+    
+    # --- DASHBOARD UI ---
     if 'Weekly Forecast' not in df.columns:
         df['Weekly Forecast'] = (df['Monthly Sold'] * 0.25).astype(int)
     
-    # --- DASHBOARD FEATURES ---
     st.subheader("📊 Sales Overview & Forecast")
     col1, col2, col3 = st.columns(3)
     col1.metric("Total Monthly Sales", f"{df['Monthly Sold'].sum():,}")
@@ -216,23 +231,21 @@ if "df_final" in st.session_state and st.session_state.df_final is not None:
     ).properties(height=300)
     st.altair_chart(chart, use_container_width=True)
 
-    # --- UPDATED TEXT SUMMARY & PREDICTIONS ---
-    st.markdown("#### 📊 Inventory Insights & Predictions")
+    # --- PREDICTIONS & LOGISTICS ---
     df['Stock-to-Sales Ratio'] = df['Current Stock'] / (df['Monthly Sold'] + 1)
     df['Predicted Status'] = df.apply(lambda x: "Restock Soon" if x['Stock-to-Sales Ratio'] < 0.5 else "Stable", axis=1)
     
-    st.info(f"Summary: You have {len(df[df['Stock-to-Sales Ratio'] < 0.5])} items that may need urgent attention based on sales velocity.")
+    st.info(f"Summary: {len(df[df['Stock-to-Sales Ratio'] < 0.5])} items need attention.")
     with st.expander("View Predicted Inventory Actions"):
         st.dataframe(df[['Product Name', 'Weekly Forecast', 'Predicted Status']], use_container_width=True)
         
     if not df[df['Current Stock'] <= st.session_state.LOW_STOCK_THRESHOLD].empty:
-        st.markdown("### 🚨 High Priority Logistics Alerts")
         for _, row in df[df['Current Stock'] <= st.session_state.LOW_STOCK_THRESHOLD].iterrows():
             st.warning(f"⚠️ Reorder: '{row['Product Name']}' has only **{row['Current Stock']}** left.")
 
-    st.markdown("---")
+    # --- AI GENERATOR ---
     st.markdown("### 🧠 AI Content Generator")
-    selected_name = st.selectbox("Select product to analyze:", df['Product Name'].tolist())
+    selected_name = st.selectbox("Select product:", df['Product Name'].tolist())
     target_prod = df[df['Product Name'] == selected_name].iloc[0]
     
     if st.button("Generate AI Insights"):
@@ -245,44 +258,26 @@ if "df_final" in st.session_state and st.session_state.df_final is not None:
                     response = client.models.generate_content(model="gemini-2.0-flash", contents=f"Analyze {target_prod['Product Name']}. Tone: {st.session_state.brand_tone}.")
                 st.session_state.ai_usage_count += 1
                 st.markdown(response.text)
-                st.success(f"Generated! ({st.session_state.ai_usage_count}/{AI_DAILY_LIMIT})")
             except Exception:
-                st.error("🙏 Our AI assistant is currently at maximum capacity. Please try again in a moment.")
+                st.error("🙏 Our AI assistant is currently at maximum capacity. Please try again.")
 
 else:
-    # 3. LANDING PAGE
+    # --- LANDING PAGE (Shown when no data is loaded) ---
     st.title("🚀 Growth Pilot Ai")
     st.subheader("Your AI-powered assistant for smarter inventory and faster sales.")
+    st.write("Upload your product performance CSV file to generate insights, or use our demo data to get started.")
     
     c1, c2, c3 = st.columns(3)
     c1.metric("Status", "Operational", "Online")
     c2.metric("Model", "Gemini 2.0", "Flash")
     c3.metric("Database", "Firestore", "Secure")
     
-    st.markdown("---")
     st.markdown("### 💡 How to Get Started")
-    with st.expander("Step 1: Get your data from Shopee"):
-        st.write("""
-        1. Open your browser and go to [seller.shopee.ph](https://seller.shopee.ph/). 
-           *(Note: You must use a computer or browser in desktop mode when using a mobile device. The Shopee mobile app does not support downloading CSV files.)*
-        2. Log in to your shop.
-        3. On the left sidebar, click **'Business Insights'**.
-        4. Select the **'Product'** tab.
-        5. Click the **'Export Data'** button to download the report as a **.CSV** file.
-        """)
-    with st.expander("Step 2: Upload your file"):
-        st.write("""
-        1. Click the **'Browse files'** button in the sidebar.
-        2. Upload the CSV file you just downloaded from Shopee.
-        """)
-    with st.expander("Step 3: Analyze and Grow"):
-        st.write("""
-        1. Use the **'Low Stock Warning Flag'** slider to set your alert level. This allows you to define the minimum number of stocks at which the system will automatically flag for urgent reordering.
-        2. Click **'Analyze My Store'** to see your sales forecast, inventory gaps, and AI-generated social media content! You can even choose the tone for your AI-generated social media content!
-        """)
-
+    with st.expander("Step 1: Get your data"):
+        st.write("Download your 'Sales Info' CSV from Shopee Seller Centre.")
+    with st.expander("Step 2: Analyze"):
+        st.write("Upload the file and click 'Analyze My Store'.")
     
-    st.markdown("---")
     if st.button("✨ Load Demo Data"):
         st.session_state.demo_mode = True
         st.rerun()
