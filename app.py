@@ -156,21 +156,34 @@ st.sidebar.info("📧 Need help? [Contact Support](mailto:grantjaspertaneo@gmail
 st.sidebar.markdown("---")
 st.sidebar.caption("v1.0.0 | GrowthPilot AI © 2026")
 
+
 # --- 5 & 6. UNIFIED UI & RUNTIME LOGIC ---
 # 1. CENTRAL DATA PROCESSING ENGINE
 def process_data(file_obj=None, use_demo=False):
+    """The 'Brain' that converts inputs into a clean DataFrame."""
     try:
-        if use_demo: return get_mock_data("demo_user")
+        if use_demo:
+            return get_mock_data("demo_user")
+        
         if file_obj:
             if not file_obj.name.endswith('.csv'):
-                st.error("❌ Invalid file.")
+                st.error("❌ Invalid file format. Please upload a .csv file.")
                 return None
+            
             df_raw = pd.read_csv(file_obj)
             required = ["Product Name", "Price (PHP)", "Current Stock", "Monthly Sold", "Rating"]
-            mapping = {req: next((c for c in df_raw.columns if req.lower() in c.lower()), df_raw.columns[0]) for req in required}
+            
+            # --- SMART MAPPING LOGIC ---
+            mapping = {}
+            for req in required:
+                # Look for column name match, otherwise default to index position
+                match = next((col for col in df_raw.columns if req.lower() in col.lower() or col.lower() in req.lower()), None)
+                mapping[req] = match if match else df_raw.columns[required.index(req)]
+            
+            # Return cleaned and renamed DataFrame
             return df_raw.rename(columns={v: k for k, v in mapping.items()})[required]
     except Exception as e:
-        st.error(f"🙏 Error: {e}")
+        st.error(f"🙏 Error processing data: {e}")
         return None
     return None
 
@@ -188,7 +201,7 @@ if run_analysis or st.session_state.get("demo_mode", False):
             st.warning("⚠️ Please upload a CSV file or enable Demo Mode first.")
 
 # 3. DASHBOARD DISPLAY OR LANDING PAGE 
-# (This MUST be unindented from the Trigger Logic block)
+# (This is at the same indentation level as Trigger Logic, so it always runs)
 if st.session_state.get("df_final") is not None:
     df = st.session_state.df_final
     
