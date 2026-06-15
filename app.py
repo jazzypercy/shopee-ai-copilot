@@ -188,53 +188,46 @@ if not run_analysis and not st.session_state.demo_mode:
         st.rerun()
 
 # --- 6. RUNTIME LOGIC ---
-if run_analysis or st.session_state.demo_mode:
-    # 1. LOAD DATA SOURCE
-    
-    # Handle Demo Mode first
-    if st.session_state.get("demo_mode", False):
-        st.session_state.df_final = get_mock_data("demo_user")
-        st.session_state.demo_mode = False
-        st.session_state.show_demo_info = True # Use a flag to show info after reload
-        st.rerun() 
 
-    # Handle File Upload
-    elif uploaded_file is not None:
-        try:
-            df_raw = pd.read_csv(uploaded_file)
-            required_cols = ["Product Name", "Price (PHP)", "Current Stock", "Monthly Sold", "Rating"]
+# 1. LOAD DATA SOURCE (Always check this first)
+if st.session_state.get("demo_mode", False):
+    st.session_state.df_final = get_mock_data("demo_user")
+    st.session_state.demo_mode = False
+    st.session_state.show_demo_info = True
+    st.rerun()
+
+elif uploaded_file is not None:
+    try:
+        df_raw = pd.read_csv(uploaded_file)
+        required_cols = ["Product Name", "Price (PHP)", "Current Stock", "Monthly Sold", "Rating"]
+        
+        if all(col in df_raw.columns for col in required_cols):
+            st.session_state.df_final = df_raw[required_cols]
+            st.session_state.show_demo_info = False
+            st.rerun()
+        else:
+            st.warning("⚠️ **Header Mismatch:** Please map your CSV columns.")
+            mapping = {}
+            col1, col2 = st.columns(2)
+            for req in required_cols:
+                mapping[req] = col1.selectbox(f"Select column for '{req}':", df_raw.columns, key=f"map_{req}")
             
-            if all(col in df_raw.columns for col in required_cols):
-                st.session_state.df_final = df_raw[required_cols]
-                st.session_state.show_demo_info = False
+            if st.button("Apply Mapping"):
+                df_mapped = df_raw.rename(columns={v: k for k, v in mapping.items()})
+                st.session_state.df_final = df_mapped[required_cols]
                 st.rerun()
-            else:
-                st.warning("⚠️ **Header Mismatch:** Please map your CSV columns.")
-                mapping = {}
-                col1, col2 = st.columns(2)
-                for req in required_cols:
-                    mapping[req] = col1.selectbox(f"Select column for '{req}':", df_raw.columns, key=f"map_{req}")
-                
-                if st.button("Apply Mapping"):
-                    df_mapped = df_raw.rename(columns={v: k for k, v in mapping.items()})
-                    st.session_state.df_final = df_mapped[required_cols]
-                    st.rerun()
-                st.stop()
-                
-        except Exception as e:
-            st.error(f"Error reading file: {e}")
             st.stop()
-
-    # Final gatekeeper: Ensure data exists
-    if "df_final" in st.session_state:
-        df = st.session_state.df_final
-        if st.session_state.get("show_demo_info", False):
-            st.info("ℹ️ **Demo Mode:** You are viewing simulated data.")
-    else:
-        st.error("❌ Please upload a CSV file or click 'Load Demo Data'.")
+    except Exception as e:
+        st.error(f"Error reading file: {e}")
         st.stop()
 
-    # 2. PROCESSING & UI
+# 2. RUNTIME ANALYSIS (Only run if we actually have data)
+if "df_final" in st.session_state:
+    df = st.session_state.df_final
+    if st.session_state.get("show_demo_info", False):
+        st.info("ℹ️ **Demo Mode:** You are viewing simulated data.")
+
+    # PROCESSING & UI
     df['Weekly Forecast'] = (df['Monthly Sold'] * 0.25).astype(int)
     st.subheader("📊 Sales Overview & Forecast")
     col1, col2, col3 = st.columns(3)
@@ -294,7 +287,6 @@ if run_analysis or st.session_state.demo_mode:
                 )
                 
             full_text = response.text
-
             if "[LIVE_SELLING]" in full_text and "[SOCIAL_CAPTION]" in full_text:
                 t1, t2 = st.tabs(["🎙️ Live Selling", "📱 Social Caption"])
                 t1.markdown(full_text.split("[LIVE_SELLING]")[1].split("[SOCIAL_CAPTION]")[0])
@@ -303,10 +295,8 @@ if run_analysis or st.session_state.demo_mode:
                 st.markdown("---")
                 st.write("Was this insight helpful?")
                 feedback = st.feedback("thumbs", key="ai_feedback")
-                
                 if feedback is not None:
                     save_user_feedback(st.session_state.user_email, feedback)
                     st.toast("Thank you for your feedback!", icon="✨")
-
         except Exception as e:
             st.warning(f"AI Service limited: {e}")
