@@ -98,6 +98,11 @@ if not st.session_state.trial_active:
             
             st.session_state.user_email = email_input
             st.session_state.trial_active = True
+            
+            # This clears the dashboard so the Landing Page shows up fresh
+            st.session_state.df_final = None
+            st.session_state.demo_mode = False
+            
             st.rerun()
     st.stop()
 
