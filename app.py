@@ -253,7 +253,6 @@ else:
     # 3. LANDING PAGE
     st.title("🚀 Growth Pilot Ai")
     st.subheader("Your AI-powered assistant for smarter inventory and faster sales.")
-    st.write("Upload your product performance CSV file to generate insights, or use our demo data to get started.")
     
     c1, c2, c3 = st.columns(3)
     c1.metric("Status", "Operational", "Online")
