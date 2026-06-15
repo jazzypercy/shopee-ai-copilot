@@ -2,10 +2,10 @@
 import streamlit as st
 import pandas as pd
 import os
-from google import genai
 import datetime
 import json
 import altair as alt
+from google import genai
 from google.cloud import firestore
 from google.oauth2 import service_account
 
@@ -27,19 +27,26 @@ def save_user_trial(email, start_time):
         db.collection("users").document(email).set({"start_time": start_time.isoformat()})
 
 def get_user_trial(email):
-    if not db:
-        return None
+    if not db: return None
     try:
-        doc_ref = db.collection("users").document(email)
-        doc = doc_ref.get()
-        if doc.exists:
-            return datetime.datetime.fromisoformat(doc.to_dict()["start_time"])
+        doc = db.collection("users").document(email).get()
+        return datetime.datetime.fromisoformat(doc.to_dict()["start_time"]) if doc.exists else None
     except Exception as e:
-        st.warning(f"Could not connect to database: {e}")
-    return None
+        st.warning(f"Database error: {e}")
+        return None
 
 def is_trial_expired(start_time):
     return (datetime.datetime.now() - start_time) > datetime.timedelta(hours=24)
+
+def get_mock_data(username):
+    products = ["Natural Shampoo", "Body Lotion 20X", "Niacinamide Soap", "Brightening Sunscreen"]
+    return pd.DataFrame({
+        "Product Name": products,
+        "Price (PHP)": [158.0, 115.0, 59.0, 159.0],
+        "Current Stock": [14, 142, 8, 410],
+        "Monthly Sold": [340, 510, 1200, 850],
+        "Rating": [4.8, 4.9, 4.9, 4.7]
+    })
 
 # --- 2. CONFIGURATION & STATE ---
 st.set_page_config(page_title="GrowthPilot AI", layout="wide", page_icon="🛍️")
@@ -52,25 +59,19 @@ if "demo_mode" not in st.session_state: st.session_state.demo_mode = False
 if not st.session_state.trial_active:
     st.title("Welcome to GrowthPilot AI")
     email_input = st.text_input("Enter your email:")
-    
     if st.button("Access My Trial"):
-        if not email_input:
-            st.warning("Please enter an email.")
-        elif db is None:
-            st.error("System connection error. Please refresh or contact support.")
+        if not email_input: st.warning("Please enter an email.")
+        elif db is None: st.error("System connection error.")
         else:
-            # This block is correctly aligned with the 'else' above
             existing_start = get_user_trial(email_input)
             if existing_start:
                 if is_trial_expired(existing_start):
                     st.error("❌ Your 24-hour trial period has ended.")
                     st.stop()
-                else:
-                    st.session_state.trial_start_time = existing_start
+                st.session_state.trial_start_time = existing_start
             else:
                 st.session_state.trial_start_time = datetime.datetime.now()
                 save_user_trial(email_input, st.session_state.trial_start_time)
-            
             st.session_state.user_email = email_input
             st.session_state.trial_active = True
             st.rerun()
@@ -82,14 +83,13 @@ uploaded_file = st.sidebar.file_uploader("Upload Product Performance CSV", type=
 
 @st.cache_data
 def get_sample_csv_template():
-    df = pd.DataFrame({
+    return pd.DataFrame({
         "Product Name": ["Natural Shampoo", "Body Lotion 20X", "Niacinamide Soap", "Brightening Sunscreen"],
         "Price (PHP)": [158.0, 115.0, 59.0, 159.0],
         "Current Stock": [14, 142, 8, 410],
         "Monthly Sold": [340, 510, 1200, 850],
         "Rating": [4.8, 4.9, 4.9, 4.7]
-    })
-    return df.to_csv(index=False).encode('utf-8')
+    }).to_csv(index=False).encode('utf-8')
 
 st.sidebar.download_button("📥 Download CSV Template", get_sample_csv_template(), "template.csv", "text/csv")
 st.session_state.LOW_STOCK_THRESHOLD = st.sidebar.slider("Low Stock Warning Flag", 5, 1000, st.session_state.LOW_STOCK_THRESHOLD)
@@ -98,55 +98,49 @@ run_analysis = st.sidebar.button("Analyze My Store", type="primary", use_contain
 # --- 5. LANDING PAGE ---
 if not run_analysis and not st.session_state.demo_mode:
     st.title("🚀 Growth Pilot Ai")
-    with st.popover("📖 How to use GrowthPilot AI"):
-        st.markdown("1. Upload CSV or Load Demo Data.\n2. Configure stock thresholds.\n3. Analyze to get AI assets.")
+    
+    with st.expander("📖 How to use GrowthPilot AI", expanded=False):
+        st.markdown("""
+        **Step 1: Get your Shopee Data**
+        1. Open your **Shopee Seller Centre** on a computer.
+        2. Go to **Data** > **Business Insights**.
+        3. Click **Product** and then click **Export Data**.
+        4. Choose the report that includes 'Product Name', 'Price', 'Stock', and 'Sales'.
+        5. Download the file as a **.CSV**.
+        
+        **Step 2: Upload your file**
+        - On the left sidebar, click **'Browse files'** to upload your downloaded Shopee CSV.
+        - If your column names are different, our system will ask you to match them to our required fields.
+        
+        **Step 3: Analyze and Grow**
+        - Use the **'Low Stock Warning Flag'** slider to set your alert level.
+        - Click **'Analyze My Store'** to see your sales forecast, inventory gaps, and AI-generated social media content!
+        """)
+        
     if st.button("✨ Load Demo Data"):
         st.session_state.demo_mode = True
         st.rerun()
 
 # --- 6. RUNTIME LOGIC ---
 if run_analysis or st.session_state.demo_mode:
-    
-    # 1. LOAD DATA SOURCE
+    # 1. DATA LOADING
     if st.session_state.demo_mode:
         df = get_mock_data("demo_user")
         st.session_state.demo_mode = False 
-        st.info("ℹ️ **Demo Mode:** You are viewing simulated data.")
-        
     elif uploaded_file is not None:
         try:
             df = pd.read_csv(uploaded_file)
-            required_cols = ["Product Name", "Price (PHP)", "Current Stock", "Monthly Sold", "Rating"]
-            
-            # Check if columns are missing
-            if not all(col in df.columns for col in required_cols):
-                st.warning("⚠️ **Column Mismatch:** Your file headers don't match our system requirements.")
-                
-                mapping = {}
-                col1, col2 = st.columns(2)
-                for req in required_cols:
-                    mapping[req] = col1.selectbox(f"Select column for '{req}':", df.columns)
-                
-                if st.button("Apply Mapping"):
-                    df = df.rename(columns={v: k for k, v in mapping.items()})
-                    df = df[required_cols]
-                    st.session_state.mapped_df = df
-                    st.rerun()
-                
-                if "mapped_df" in st.session_state:
-                    df = st.session_state.mapped_df
-                else:
-                    st.stop()
+            required = ["Product Name", "Price (PHP)", "Current Stock", "Monthly Sold", "Rating"]
+            if not all(col in df.columns for col in required):
+                st.warning("⚠️ Column Mismatch. Please check file headers.")
+                st.stop()
         except Exception as e:
-            st.error(f"Error reading file: {e}")
+            st.error(f"Error: {e}")
             st.stop()
-    else:
-        st.error("❌ Please upload a CSV file or click 'Load Demo Data'.")
-        st.stop()
+    else: st.stop()
 
-    # 2. DATA PROCESSING
+    # 2. PROCESSING & UI
     df['Weekly Forecast'] = (df['Monthly Sold'] * 0.25).astype(int)
-    
     st.subheader("📊 Sales Overview & Forecast")
     col1, col2, col3 = st.columns(3)
     col1.metric("Total Monthly Sales", f"{df['Monthly Sold'].sum():,}")
