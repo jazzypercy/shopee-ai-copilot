@@ -297,41 +297,40 @@ if st.session_state.get("df_final") is not None:
                 st.markdown(response.text)
             except Exception:
                 st.error("🙏 Our AI assistant is currently at maximum capacity.")
-    else:
-        # 3. LANDING PAGE
-        st.title("🚀 Growth Pilot Ai")
-        st.subheader("Your AI-powered assistant for smarter inventory and faster sales.")
-        st.write("Upload your product performance CSV file to generate insights, or use our demo data to get started.")
+else:
+    # 3. LANDING PAGE
+    st.title("🚀 Growth Pilot Ai")
+    st.subheader("Your AI-powered assistant for smarter inventory and faster sales.")
+    st.write("Upload your product performance CSV file to generate insights, or use our demo data to get started.")
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Status", "Operational", "Online")
+    c2.metric("Model", "Gemini 2.0", "Flash")
+    c3.metric("Database", "Firestore", "Secure")
+        
+    st.markdown("---")
+    st.markdown("### 💡 How to Get Started")
     
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Status", "Operational", "Online")
-        c2.metric("Model", "Gemini 2.0", "Flash")
-        c3.metric("Database", "Firestore", "Secure")
-        
-        st.markdown("---")
-        st.markdown("### 💡 How to Get Started")
-        
-        with st.expander("Step 1: Get your data from Shopee"):
-            st.write("""
-            1. Open your browser and go to [seller.shopee.ph](https://seller.shopee.ph/). 
-               *(Note: You must use a computer or browser in desktop mode when using a mobile device. The Shopee mobile app does not support downloading CSV files.)*
-            2. Log in to your shop.
-            3. On the left sidebar, click **'Business Insights'**.
-            4. Select the **'Product'** tab.
-            5. Click the **'Export Data'** button to download the report as a **.CSV** file.
-            """)
+    with st.expander("Step 1: Get your data from Shopee"):
+        st.write("""
+        1. Open your browser and go to [seller.shopee.ph](https://seller.shopee.ph/). *(Note: You must use a computer or browser in desktop mode when using a mobile device. The Shopee mobile app does not support downloading CSV files.)*
+        2. Log in to your shop.
+        3. On the left sidebar, click **'Business Insights'**.
+        4. Select the **'Product'** tab.
+        5. Click the **'Export Data'** button to download the report as a **.CSV** file.
+        """)
             
-        with st.expander("Step 2: Upload your file"):
-            st.write("""
-            1. Click the **'Browse files'** button in the sidebar.
-            2. Upload the CSV file you just downloaded from Shopee.
-            """)
+     with st.expander("Step 2: Upload your file"):
+        st.write("""
+        1. Click the **'Browse files'** button in the sidebar.
+        2. Upload the CSV file you just downloaded from Shopee.
+        """)
     
-        with st.expander("Step 3: Analyze and Grow"):
-            st.write("""
-            1. Use the **'Low Stock Warning Flag'** slider to set your alert level. This allows you to define the minimum number of stocks at which the system will automatically flag for urgent reordering.
-            2. Click **'Analyze My Store'** to see your sales forecast, inventory gaps, and AI-generated social media content! You can even choose the tone for your AI-generated social media content!
-            """)
+    with st.expander("Step 3: Analyze and Grow"):
+        st.write("""
+        1. Use the **'Low Stock Warning Flag'** slider to set your alert level. This allows you to define the minimum number of stocks at which the system will automatically flag for urgent reordering.
+        2. Click **'Analyze My Store'** to see your sales forecast, inventory gaps, and AI-generated social media content! You can even choose the tone for your AI-generated social media content!
+        """)
     
         st.markdown("---")
         if st.button("✨ Load Demo Data"):
