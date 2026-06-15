@@ -109,13 +109,6 @@ if not st.session_state.trial_active:
 # --- 4. CONTROL PANEL ---
 st.sidebar.header("🛡️ System Control Panel")
 
-# --- RESET BUTTON: Force the Landing Page to reappear ---
-if st.session_state.get("df_final") is not None:
-    if st.sidebar.button("🔄 Reset to Home", use_container_width=True):
-        st.session_state.df_final = None
-        st.session_state.demo_mode = False
-        st.rerun()
-
 with st.sidebar.popover("❓ How to use this app"):
     st.markdown("### 💡 Quick Guide")
     
@@ -232,6 +225,15 @@ if run_analysis or st.session_state.get("demo_mode", False):
 # 3. DASHBOARD DISPLAY OR LANDING PAGE 
 if st.session_state.get("df_final") is not None:
     df = st.session_state.df_final
+    col_main, col_toolbox = st.columns([0.85, 0.15])
+    
+    with col_toolbox:
+        # st.empty() or a simple container helps align it
+        with st.popover("🛠️ Toolbox"):
+            st.markdown("### 💡 Quick Guide")
+            st.write("1. **Analyze:** Check the charts below to see stock vs. demand.")
+            st.write("2. **AI Insights:** Scroll down to select a product.")
+            st.write("3. **Actions:** Review items needing attention.")
     
     # --- CALCULATED COLUMNS ---
     if 'Estimated Demand' not in df.columns:
