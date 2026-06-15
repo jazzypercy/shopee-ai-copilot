@@ -109,22 +109,6 @@ if not st.session_state.trial_active:
 # --- 4. CONTROL PANEL ---
 st.sidebar.header("🛡️ System Control Panel")
 
-with st.sidebar.popover("❓ How to use this app"):
-    st.markdown("### 💡 Quick Guide")
-    
-    st.markdown("#### Step 1: Get your data from Shopee")
-    st.write("""
-    1. Go to [seller.shopee.ph](https://seller.shopee.ph/). (Use desktop mode on mobile).
-    2. Log in and click **'Business Insights'** in the sidebar.
-    3. Select the **'Product'** tab.
-    4. Click **'Export Data'** to download your **.CSV** file.
-    """)
-    
-    st.markdown("#### Step 2: Upload")
-    st.write("Click the 'Browse files' button in this sidebar and select your downloaded CSV.")
-    
-    st.markdown("#### Step 3: Analyze")
-    st.write("Adjust the 'Low Stock Warning Flag' slider, then click **'Analyze My Store'** to view your forecasts and generate AI insights.")
 
 # Sidebar Timer: Only shows if trial is active
 if st.session_state.trial_active and "trial_start_time" in st.session_state:
@@ -225,15 +209,28 @@ if run_analysis or st.session_state.get("demo_mode", False):
 # 3. DASHBOARD DISPLAY OR LANDING PAGE 
 if st.session_state.get("df_final") is not None:
     df = st.session_state.df_final
+    
+    # Create the columns
     col_main, col_toolbox = st.columns([0.85, 0.15])
     
+    # Put the Title in the left column
+    with col_main:
+        st.subheader("📊 Sales Overview & Forecast")
+        
+    # Put the Toolbox in the right column
     with col_toolbox:
-        # st.empty() or a simple container helps align it
         with st.popover("🛠️ Toolbox"):
-            st.markdown("### 💡 Quick Guide")
-            st.write("1. **Analyze:** Check the charts below to see stock vs. demand.")
-            st.write("2. **AI Insights:** Scroll down to select a product.")
-            st.write("3. **Actions:** Review items needing attention.")
+            st.markdown("#### 💡 Quick Guide")
+            st.markdown("##### Step 1: Get your data from Shopee")
+            st.write("""
+            1. Go to [seller.shopee.ph](https://seller.shopee.ph/). 
+            2. Click **'Business Insights'** -> **'Product'** tab.
+            3. Click **'Export Data'** to download your **.CSV** file.
+            """)
+            st.markdown("##### Step 2: Upload")
+            st.write("Click the 'Browse files' button in this sidebar.")
+            st.markdown("##### Step 3: Analyze")
+            st.write("Click **'Analyze My Store'** to view forecasts and AI insights.")
     
     # --- CALCULATED COLUMNS ---
     if 'Estimated Demand' not in df.columns:
