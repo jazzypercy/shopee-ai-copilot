@@ -268,7 +268,7 @@ else:
 
     with st.expander("Step 3: Analyze and Grow"):
         st.write("""
-        1. Use the **'Low Stock Warning Flag'** slider to set your alert level.
+        1. Use the **'Low Stock Warning Flag'** slider to set your alert level. This allows you to define the minimum number of stocks at which the system will automatically flag for urgent reordering.
         2. Click **'Analyze My Store'** to see your sales forecast, inventory gaps, and AI-generated social media content! You can even choose the tone for your AI-generated social media content!
         """)
 
