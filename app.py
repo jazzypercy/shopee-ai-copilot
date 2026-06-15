@@ -319,8 +319,8 @@ else:
         4. Select the **'Product'** tab.
         5. Click the **'Export Data'** button to download the report as a **.CSV** file.
         """)
-            
-     with st.expander("Step 2: Upload your file"):
+        
+    with st.expander("Step 2: Upload your file"):
         st.write("""
         1. Click the **'Browse files'** button in the sidebar.
         2. Upload the CSV file you just downloaded from Shopee.
@@ -332,7 +332,7 @@ else:
         2. Click **'Analyze My Store'** to see your sales forecast, inventory gaps, and AI-generated social media content! You can even choose the tone for your AI-generated social media content!
         """)
     
-        st.markdown("---")
-        if st.button("✨ Load Demo Data"):
-            st.session_state.demo_mode = True
-            st.rerun()
+    st.markdown("---")
+    if st.button("✨ Load Demo Data"):
+        st.session_state.demo_mode = True
+        st.rerun()
