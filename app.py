@@ -158,7 +158,7 @@ st.sidebar.caption("v1.0.0 | GrowthPilot AI © 2026")
 
 # --- 5 & 6. UNIFIED UI & RUNTIME LOGIC ---
 
-# 1. LOAD DATA SOURCE (Acquisition)
+# 1. LOAD DATA SOURCE (Aggressive Auto-Mapper)
 if st.session_state.get("demo_mode", False):
     st.session_state.df_final = get_mock_data("demo_user")
     st.session_state.demo_mode = False
@@ -170,85 +170,72 @@ elif uploaded_file is not None and st.session_state.df_final is None:
         df_raw = pd.read_csv(uploaded_file)
         required_cols = ["Product Name", "Price (PHP)", "Current Stock", "Monthly Sold", "Rating"]
         
-        # Smart Auto-Mapper
+        # AGGRESSIVE MAPPING: Map columns instantly without user intervention
         mapping = {}
-        missing_cols = []
         for req in required_cols:
-            match = next((col for col in df_raw.columns if req.lower() in col.lower() or col.lower() in req.lower()), None)
-            if match: mapping[req] = match
-            else: missing_cols.append(req)
-        
-        if not missing_cols:
-            st.session_state.df_final = df_raw.rename(columns={v: k for k, v in mapping.items()})[required_cols]
-            st.session_state.show_demo_info = False
-            st.rerun()
-        else:
-            st.warning("⚠️ **Header Mismatch:** Please map your CSV columns.")
-            for req in missing_cols:
-                mapping[req] = st.selectbox(f"Select column for '{req}':", df_raw.columns, key=f"map_{req}")
-            if st.button("Apply Mapping"):
-                df_mapped = df_raw.rename(columns={v: k for k, v in mapping.items()})
-                st.session_state.df_final = df_mapped[required_cols]
-                st.rerun()
-            st.stop()
-    except Exception:
-        st.error("🙏 Sorry, could not read file. Check CSV format.")
+            # Look for matches: contains req name, or default to column index position
+            matches = [col for col in df_raw.columns if req.lower() in col.lower() or col.lower() in req.lower()]
+            mapping[req] = matches[0] if matches else df_raw.columns[required_cols.index(req)]
+
+        # Apply mapping and force immediate refresh to show dashboard
+        df_final = df_raw.rename(columns={v: k for k, v in mapping.items()})
+        st.session_state.df_final = df_final[required_cols]
+        st.session_state.show_demo_info = False
+        st.rerun()
+    except Exception as e:
+        st.error(f"🙏 Could not process file: {e}")
         st.stop()
 
 # 2. RUNTIME ANALYSIS (Dashboard)
-# The dashboard shows if data exists AND (we are in demo mode OR the sidebar button was clicked)
 if "df_final" in st.session_state and st.session_state.df_final is not None:
-    if st.session_state.get("show_demo_info", False) or run_analysis:
-        df = st.session_state.df_final
-        if 'Weekly Forecast' not in df.columns:
-            df['Weekly Forecast'] = (df['Monthly Sold'] * 0.25).astype(int)
-        
-        # --- YOUR DASHBOARD FEATURES ---
-        st.subheader("📊 Sales Overview & Forecast")
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Total Monthly Sales", f"{df['Monthly Sold'].sum():,}")
-        col2.metric("Total Inventory Value", f"₱{(df['Price (PHP)'] * df['Current Stock']).sum():,.0f}")
-        col3.metric("Avg. Forecast Accuracy", "92%")
-        
-        st.markdown("---")
-        st.markdown("### 📈 Demand vs. Stock Analysis")
-        chart_data = df.melt('Product Name', value_vars=['Current Stock', 'Weekly Forecast'], var_name='Metric', value_name='Units')
-        chart = alt.Chart(chart_data).mark_bar().encode(
-            x=alt.X('Units', title='Units'), y=alt.Y('Product Name', title='', sort='-x'),
-            color=alt.Color('Metric', scale=alt.Scale(domain=['Current Stock', 'Weekly Forecast'], range=['#60A5FA', '#F87171'])),
-            tooltip=['Product Name', 'Metric', 'Units']
-        ).properties(height=300)
-        st.altair_chart(chart, use_container_width=True)
+    df = st.session_state.df_final
+    if 'Weekly Forecast' not in df.columns:
+        df['Weekly Forecast'] = (df['Monthly Sold'] * 0.25).astype(int)
+    
+    # --- YOUR DASHBOARD FEATURES ---
+    st.subheader("📊 Sales Overview & Forecast")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Total Monthly Sales", f"{df['Monthly Sold'].sum():,}")
+    col2.metric("Total Inventory Value", f"₱{(df['Price (PHP)'] * df['Current Stock']).sum():,.0f}")
+    col3.metric("Avg. Forecast Accuracy", "92%")
+    
+    st.markdown("---")
+    st.markdown("### 📈 Demand vs. Stock Analysis")
+    chart_data = df.melt('Product Name', value_vars=['Current Stock', 'Weekly Forecast'], var_name='Metric', value_name='Units')
+    chart = alt.Chart(chart_data).mark_bar().encode(
+        x=alt.X('Units', title='Units'), y=alt.Y('Product Name', title='', sort='-x'),
+        color=alt.Color('Metric', scale=alt.Scale(domain=['Current Stock', 'Weekly Forecast'], range=['#60A5FA', '#F87171'])),
+        tooltip=['Product Name', 'Metric', 'Units']
+    ).properties(height=300)
+    st.altair_chart(chart, use_container_width=True)
 
-        st.markdown("#### 📊 Text Summary")
-        deficit_items = df[df['Weekly Forecast'] > df['Current Stock']]['Product Name'].tolist()
-        if deficit_items: st.write(f"⚠️ **Attention:** High demand for **{', '.join(deficit_items[:2])}**.")
-        
-        if not df[df['Current Stock'] <= st.session_state.LOW_STOCK_THRESHOLD].empty:
-            st.markdown("### 🚨 High Priority Logistics Alerts")
-            for _, row in df[df['Current Stock'] <= st.session_state.LOW_STOCK_THRESHOLD].iterrows():
-                st.warning(f"⚠️ Reorder: '{row['Product Name']}' has only **{row['Current Stock']}** left.")
+    st.markdown("#### 📊 Text Summary")
+    deficit_items = df[df['Weekly Forecast'] > df['Current Stock']]['Product Name'].tolist()
+    if deficit_items: st.write(f"⚠️ **Attention:** High demand for **{', '.join(deficit_items[:2])}**.")
+    
+    if not df[df['Current Stock'] <= st.session_state.LOW_STOCK_THRESHOLD].empty:
+        st.markdown("### 🚨 High Priority Logistics Alerts")
+        for _, row in df[df['Current Stock'] <= st.session_state.LOW_STOCK_THRESHOLD].iterrows():
+            st.warning(f"⚠️ Reorder: '{row['Product Name']}' has only **{row['Current Stock']}** left.")
 
-        st.markdown("---")
-        st.markdown("### 🧠 AI Content Generator")
-        selected_name = st.selectbox("Select product to analyze:", df['Product Name'].tolist())
-        target_prod = df[df['Product Name'] == selected_name].iloc[0]
-        
-        if st.button("Generate AI Insights"):
-            if st.session_state.ai_usage_count >= AI_DAILY_LIMIT:
-                st.warning("✨ **Daily Limit Reached**")
-            else:
-                try:
-                    client = genai.Client(api_key=st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", "")))
-                    with st.spinner('Generating...'):
-                        response = client.models.generate_content(model="gemini-2.0-flash", contents=f"Analyze {target_prod['Product Name']}.")
-                    st.session_state.ai_usage_count += 1
-                    st.markdown(response.text)
-                    st.success(f"Generated! ({st.session_state.ai_usage_count}/{AI_DAILY_LIMIT})")
-                except Exception:
-                    st.error("🙏 AI service is busy.")
-    else:
-        st.info("✅ Data uploaded! Click **'Analyze My Store'** in the sidebar to begin.")
+    st.markdown("---")
+    st.markdown("### 🧠 AI Content Generator")
+    selected_name = st.selectbox("Select product to analyze:", df['Product Name'].tolist())
+    target_prod = df[df['Product Name'] == selected_name].iloc[0]
+    
+    if st.button("Generate AI Insights"):
+        if st.session_state.ai_usage_count >= AI_DAILY_LIMIT:
+            st.warning("✨ **Daily Limit Reached**")
+        else:
+            try:
+                client = genai.Client(api_key=st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", "")))
+                with st.spinner('Generating...'):
+                    response = client.models.generate_content(model="gemini-2.0-flash", contents=f"Analyze {target_prod['Product Name']}. Tone: {st.session_state.brand_tone}.")
+                st.session_state.ai_usage_count += 1
+                st.markdown(response.text)
+                st.success(f"Generated! ({st.session_state.ai_usage_count}/{AI_DAILY_LIMIT})")
+            except Exception:
+                st.error("🙏 AI service is busy.")
 
 else:
     # 3. LANDING PAGE
