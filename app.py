@@ -123,6 +123,14 @@ st.sidebar.download_button("📥 Download CSV Template", get_sample_csv_template
 st.session_state.LOW_STOCK_THRESHOLD = st.sidebar.slider("Low Stock Warning Flag", 5, 1000, st.session_state.LOW_STOCK_THRESHOLD)
 run_analysis = st.sidebar.button("Analyze My Store", type="primary", use_container_width=True)
 
+st.sidebar.markdown("---")
+st.sidebar.subheader("🎨 AI Brand Tone")
+# We store this in session_state so it persists across interactions
+st.session_state.brand_tone = st.sidebar.selectbox(
+    "Select your brand voice:",
+    ["Professional", "Energetic", "Casual", "Urgent/Sales-y"]
+)
+
 # --- FOOTER IN SIDEBAR ---
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🤝 About GrowthPilot")
@@ -153,7 +161,7 @@ if not run_analysis and not st.session_state.demo_mode:
         st.markdown("""
         **Step 1: Get your Shopee Data (Use a Computer)**
         1. Open your browser and go to [seller.shopee.ph](https://seller.shopee.ph/). 
-           *(Note: You must use a computer. The Shopee mobile app does not support downloading CSV files.)*
+           *(Note: You must use a computer or browser in desktop mode for mobile devices. The Shopee mobile app does not support downloading CSV files.)*
         2. Log in to your shop.
         3. On the left sidebar, click **'Business Insights'**.
         4. Select the **'Product'** tab.
@@ -266,13 +274,20 @@ if run_analysis or st.session_state.demo_mode:
         try:
             client = genai.Client(api_key=api_key)
             with st.spinner('Generating AI insights...'):
+                
+                # --- UPDATE THIS CALL ---
                 response = client.models.generate_content(
                     model="gemini-2.0-flash", 
-                    contents=f"Analyze {top_prod['Product Name']}. Output as: [LIVE_SELLING] (script) and [SOCIAL_CAPTION] (caption)."
+                    contents=(
+                        f"Analyze the product: {top_prod['Product Name']}. "
+                        f"Tone of voice: {st.session_state.brand_tone}. "
+                        "Output strictly in two sections: "
+                        "[LIVE_SELLING] (script) and [SOCIAL_CAPTION] (caption)."
+                    )
                 )
+                
             full_text = response.text
-            
-            # --- START OF PLACEMENT ---
+
             if "[LIVE_SELLING]" in full_text and "[SOCIAL_CAPTION]" in full_text:
                 t1, t2 = st.tabs(["🎙️ Live Selling", "📱 Social Caption"])
                 t1.markdown(full_text.split("[LIVE_SELLING]")[1].split("[SOCIAL_CAPTION]")[0])
@@ -287,7 +302,6 @@ if run_analysis or st.session_state.demo_mode:
                     # Save to Firestore
                     save_user_feedback(st.session_state.user_email, feedback)
                     st.toast("Thank you for your feedback!", icon="✨")
-            # --- END OF PLACEMENT ---
 
         except Exception as e:
             st.warning(f"AI Service limited: {e}")
