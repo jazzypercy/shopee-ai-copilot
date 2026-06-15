@@ -104,6 +104,13 @@ if not st.session_state.trial_active:
 # --- 4. CONTROL PANEL ---
 st.sidebar.header("🛡️ System Control Panel")
 
+# --- RESET BUTTON: Force the Landing Page to reappear ---
+if st.session_state.get("df_final") is not None:
+    if st.sidebar.button("🔄 Reset to Home", use_container_width=True):
+        st.session_state.df_final = None
+        st.session_state.demo_mode = False
+        st.rerun()
+
 with st.sidebar.popover("❓ How to use this app"):
     st.markdown("### 💡 Quick Guide")
     
