@@ -219,7 +219,7 @@ if st.session_state.get("df_final") is not None:
         
     # Put the Toolbox in the right column
     with col_toolbox:
-        with st.popover("🛠️ Toolbox"):
+        with st.popover("??"):
             st.markdown("#### 💡 Quick Guide")
             st.markdown("##### Step 1: Get your data from Shopee")
             st.write("""
@@ -240,7 +240,6 @@ if st.session_state.get("df_final") is not None:
     # Calculate Total Earned
     df['Total Earned'] = df['Price (PHP)'] * df['Monthly Sold']
     
-    st.subheader("📊 Sales Overview & Forecast")
     col1, col2, col3 = st.columns(3)
     col1.metric("Total Monthly Sales", f"{df['Monthly Sold'].sum():,}")
     col2.metric("Total Inventory Value", f"₱{(df['Price (PHP)'] * df['Current Stock']).sum():,.0f}")
