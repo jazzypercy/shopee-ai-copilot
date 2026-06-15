@@ -15,6 +15,10 @@ if "demo_mode" not in st.session_state:
     st.session_state.demo_mode = False
 if "df_final" not in st.session_state:
     st.session_state.df_final = None
+    
+if "ai_usage_count" not in st.session_state:
+    st.session_state.ai_usage_count = 0
+AI_DAILY_LIMIT = 5 # Set your chosen limit here
 
 @st.cache_resource
 def get_db():
@@ -262,9 +266,6 @@ if "df_final" in st.session_state:
 
     # 3. ANALYTICS & ALERTS
     st.markdown("#### 📝 Key Takeaways")
-    
-    # 3. ANALYTICS & ALERTS
-    st.markdown("#### 📝 Key Takeaways")
     df['Gap'] = df['Weekly Forecast'] - df['Current Stock']
     riskiest_prod = df.loc[df['Gap'].idxmax()]
     
@@ -282,36 +283,43 @@ if "df_final" in st.session_state:
     else:
         st.success("✅ All stock levels are healthy.")
 
-    # 4. AI ASSETS
-    top_prod = df.sort_values(by="Monthly Sold", ascending=False).iloc[0]
-    st.markdown(f"### 🧠 Automated Assets for: *{top_prod['Product Name']}*")
+   # 4. AI ASSETS
+    st.markdown("### 🧠 AI Content Generator")
     
-    api_key = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", ""))
-    if api_key:
-        try:
-            client = genai.Client(api_key=api_key)
-            with st.spinner('Generating AI insights...'):
-                response = client.models.generate_content(
-                    model="gemini-2.0-flash", 
-                    contents=(
-                        f"Analyze the product: {top_prod['Product Name']}. "
-                        f"Tone of voice: {st.session_state.brand_tone}. "
-                        "Output strictly in two sections: "
-                        "[LIVE_SELLING] (script) and [SOCIAL_CAPTION] (caption)."
-                    )
-                )
+    # Let user pick the product
+    selected_name = st.selectbox("Select product to analyze:", df['Product Name'].tolist())
+    target_prod = df[df['Product Name'] == selected_name].iloc[0]
+    
+    if st.button("Generate AI Insights"):
+        # Check usage limit
+        if st.session_state.ai_usage_count >= AI_DAILY_LIMIT:
+            st.error("🚀 **Usage Limit Reached**")
+            st.info(f"You've used your {AI_DAILY_LIMIT} free daily AI insights. Upgrade to Pro for unlimited access!")
+        
+        else:
+            api_key = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", ""))
+            if api_key:
+                try:
+                    client = genai.Client(api_key=api_key)
+                    with st.spinner(f'Generating assets for {selected_name}...'):
+                        response = client.models.generate_content(
+                            model="gemini-2.0-flash", 
+                            contents=(
+                                f"Analyze the product: {target_prod['Product Name']}. "
+                                f"Price: {target_prod['Price (PHP)']}. "
+                                f"Tone: {st.session_state.brand_tone}. "
+                                "Output strictly in two sections: [LIVE_SELLING] and [SOCIAL_CAPTION]."
+                            )
+                        )
+                    
+                    full_text = response.text
+                    # Display results...
+                    if "[LIVE_SELLING]" in full_text and "[SOCIAL_CAPTION]" in full_text:
+                        st.session_state.ai_usage_count += 1 # Increment counter
+                        t1, t2 = st.tabs(["🎙️ Live Selling", "📱 Social Caption"])
+                        t1.markdown(full_text.split("[LIVE_SELLING]")[1].split("[SOCIAL_CAPTION]")[0])
+                        t2.markdown(full_text.split("[SOCIAL_CAPTION]")[1])
+                        st.success(f"Used {st.session_state.ai_usage_count}/{AI_DAILY_LIMIT} daily credits.")
                 
-            full_text = response.text
-            if "[LIVE_SELLING]" in full_text and "[SOCIAL_CAPTION]" in full_text:
-                t1, t2 = st.tabs(["🎙️ Live Selling", "📱 Social Caption"])
-                t1.markdown(full_text.split("[LIVE_SELLING]")[1].split("[SOCIAL_CAPTION]")[0])
-                t2.markdown(full_text.split("[SOCIAL_CAPTION]")[1])
-                
-                st.markdown("---")
-                st.write("Was this insight helpful?")
-                feedback = st.feedback("thumbs", key="ai_feedback")
-                if feedback is not None:
-                    save_user_feedback(st.session_state.user_email, feedback)
-                    st.toast("Thank you for your feedback!", icon="✨")
-        except Exception as e:
-            st.warning(f"AI Service limited: {e}")
+                except Exception as e:
+                    st.warning(f"AI Service currently limited: {e}")
