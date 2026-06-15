@@ -192,14 +192,15 @@ if not run_analysis and not st.session_state.demo_mode:
         st.rerun()
 
 # --- 6. RUNTIME LOGIC ---
-# 1. LOAD DATA SOURCE
+
+# 1. LOAD DATA SOURCE (Acquisition)
 if st.session_state.get("demo_mode", False):
     st.session_state.df_final = get_mock_data("demo_user")
     st.session_state.demo_mode = False
     st.session_state.show_demo_info = True
     st.rerun()
 
-# Only process file upload if a file is actually present
+# Only handle the file if we haven't loaded data yet
 elif uploaded_file is not None and "df_final" not in st.session_state:
     try:
         df_raw = pd.read_csv(uploaded_file)
@@ -207,22 +208,16 @@ elif uploaded_file is not None and "df_final" not in st.session_state:
         
         if all(col in df_raw.columns for col in required_cols):
             st.session_state.df_final = df_raw[required_cols]
-            st.session_state.show_demo_info = False
             st.rerun()
         else:
-            st.warning("⚠️ **Header Mismatch:** Please map your CSV columns.")
-            mapping = {}
-            col1, col2 = st.columns(2)
-            for req in required_cols:
-                mapping[req] = col1.selectbox(f"Select column for '{req}':", df_raw.columns, key=f"map_{req}")
-            
+            st.warning("⚠️ **Header Mismatch:** Please map your columns.")
+            mapping = {req: st.selectbox(f"Select '{req}':", df_raw.columns, key=f"map_{req}") for req in required_cols}
             if st.button("Apply Mapping"):
-                df_mapped = df_raw.rename(columns={v: k for k, v in mapping.items()})
-                st.session_state.df_final = df_mapped[required_cols]
+                st.session_state.df_final = df_raw.rename(columns={v: k for k, v in mapping.items()})[required_cols]
                 st.rerun()
             st.stop()
     except Exception as e:
-        st.error(f"Error reading file: {e}")
+        st.error(f"Error: {e}")
         st.stop()
 
 # 2. RUNTIME ANALYSIS (Only run if we have data)
@@ -231,8 +226,11 @@ if "df_final" in st.session_state:
     if st.session_state.get("show_demo_info", False):
         st.info("ℹ️ **Demo Mode:** You are viewing simulated data.")
 
-    # PROCESSING & UI
-    df['Weekly Forecast'] = (df['Monthly Sold'] * 0.25).astype(int)
+    # PROCESSING
+    if 'Weekly Forecast' not in df.columns:
+        df['Weekly Forecast'] = (df['Monthly Sold'] * 0.25).astype(int)
+
+    # UI
     st.subheader("📊 Sales Overview & Forecast")
     col1, col2, col3 = st.columns(3)
     col1.metric("Total Monthly Sales", f"{df['Monthly Sold'].sum():,}")
@@ -241,37 +239,22 @@ if "df_final" in st.session_state:
     
     st.markdown("---")
     st.markdown("### 📈 Demand vs. Stock Analysis")
-    
     chart_data = df.melt('Product Name', value_vars=['Current Stock', 'Weekly Forecast'], var_name='Metric', value_name='Units')
     chart = alt.Chart(chart_data).mark_bar().encode(
-        x=alt.X('Units', title='Units'),
-        y=alt.Y('Product Name', title='', sort='-x'),
+        x=alt.X('Units', title='Units'), y=alt.Y('Product Name', title='', sort='-x'),
         color=alt.Color('Metric', scale=alt.Scale(domain=['Current Stock', 'Weekly Forecast'], range=['#60A5FA', '#F87171'])),
         tooltip=['Product Name', 'Metric', 'Units']
     ).properties(height=300)
-    
     st.altair_chart(chart, use_container_width=True)
-    
-    st.markdown("#### 📊 Text Summary")
-    deficit_items = df[df['Weekly Forecast'] > df['Current Stock']]['Product Name'].tolist()
-    surplus_items = df[df['Current Stock'] >= df['Weekly Forecast']]['Product Name'].tolist()
-    
-    if deficit_items:
-        st.write(f"⚠️ **Attention needed:** We predict high demand for **{', '.join(deficit_items[:2])}**... (check stock levels).")
-    if surplus_items:
-        st.write(f"✅ **Healthy stock:** Your inventory for **{', '.join(surplus_items[:2])}** is well-aligned with current sales trends.")
-    st.caption("This summary highlights products where forecasted demand is currently outpacing your available stock.")
 
     # 3. ANALYTICS & ALERTS
     st.markdown("#### 📝 Key Takeaways")
     df['Gap'] = df['Weekly Forecast'] - df['Current Stock']
     riskiest_prod = df.loc[df['Gap'].idxmax()]
-    
     if riskiest_prod['Gap'] > 0:
         st.write(f"👉 **Critical Alert:** Your top demand risk is **{riskiest_prod['Product Name']}**.")
     else:
         st.write("👉 **Good News:** Your stock levels are healthy.")
-    
     st.dataframe(df.drop(columns=['Gap']), use_container_width=True, hide_index=True)
 
     if not df[df['Current Stock'] <= st.session_state.LOW_STOCK_THRESHOLD].empty:
@@ -314,7 +297,6 @@ if "df_final" in st.session_state:
                         st.success(f"Used {st.session_state.ai_usage_count}/{AI_DAILY_LIMIT} daily credits.")
                 except Exception as e:
                     st.warning(f"AI Service currently limited: {e}")
+
 else:
-    # This prevents the TypeError by ensuring we only show the UI if we have data
-    if not st.session_state.get("demo_mode", False) and uploaded_file is None:
-        st.info("🚀 Please upload a CSV file or click 'Load Demo Data' to begin.")
+    st.info("🚀 Please upload a CSV file or click 'Load Demo Data' to begin.")
