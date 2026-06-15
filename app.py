@@ -72,6 +72,7 @@ if not st.session_state.trial_active:
             else:
                 st.session_state.trial_start_time = datetime.datetime.now()
                 save_user_trial(email_input, st.session_state.trial_start_time)
+            
             st.session_state.user_email = email_input
             st.session_state.trial_active = True
             st.rerun()
@@ -79,6 +80,21 @@ if not st.session_state.trial_active:
 
 # --- 4. CONTROL PANEL ---
 st.sidebar.header("🛡️ System Control Panel")
+
+# Sidebar Timer: Only shows if trial is active
+if st.session_state.trial_active and "trial_start_time" in st.session_state:
+    elapsed = datetime.datetime.now() - st.session_state.trial_start_time
+    remaining = datetime.timedelta(hours=24) - elapsed
+    
+    if remaining.total_seconds() > 0:
+        hours, remainder = divmod(int(remaining.total_seconds()), 3600)
+        minutes, _ = divmod(remainder, 60)
+        st.sidebar.info(f"⏳ Trial ends in: **{hours}h {minutes}m**")
+    else:
+        st.sidebar.error("Trial expired.")
+        st.session_state.trial_active = False
+        st.rerun()
+
 uploaded_file = st.sidebar.file_uploader("Upload Product Performance CSV", type=["csv"])
 
 @st.cache_data
@@ -101,12 +117,13 @@ if not run_analysis and not st.session_state.demo_mode:
     
     with st.expander("📖 How to use GrowthPilot AI", expanded=False):
         st.markdown("""
-        **Step 1: Get your Shopee Data**
-        1. Open your **Shopee Seller Centre** on a computer.
-        2. Go to **Data** > **Business Insights**.
-        3. Click **Product** and then click **Export Data**.
-        4. Choose the report that includes 'Product Name', 'Price', 'Stock', and 'Sales'.
-        5. Download the file as a **.CSV**.
+        **Step 1: Get your Shopee Data (Use a Computer)**
+        1. Open your browser and go to [seller.shopee.ph](https://seller.shopee.ph/). 
+           *(Note: You must use a computer. The Shopee mobile app does not support downloading CSV files.)*
+        2. Log in to your shop.
+        3. On the left sidebar, click **'Business Insights'**.
+        4. Select the **'Product'** tab.
+        5. Click the **'Export Data'** button to download the report as a **.CSV** file.
         
         **Step 2: Upload your file**
         - On the left sidebar, click **'Browse files'** to upload your downloaded Shopee CSV.
