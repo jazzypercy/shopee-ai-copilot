@@ -193,7 +193,7 @@ if not run_analysis and not st.session_state.demo_mode:
 
 # --- 6. RUNTIME LOGIC ---
 
-# 1. LOAD DATA SOURCE (Always check this first)
+# 1. LOAD DATA SOURCE (Acquisition Logic)
 if st.session_state.get("demo_mode", False):
     st.session_state.df_final = get_mock_data("demo_user")
     st.session_state.demo_mode = False
@@ -258,10 +258,8 @@ if "df_final" in st.session_state:
     
     if deficit_items:
         st.write(f"⚠️ **Attention needed:** We predict high demand for **{', '.join(deficit_items[:2])}**... (check stock levels).")
-    
     if surplus_items:
         st.write(f"✅ **Healthy stock:** Your inventory for **{', '.join(surplus_items[:2])}** is well-aligned with current sales trends.")
-    
     st.caption("This summary highlights products where forecasted demand is currently outpacing your available stock.")
 
     # 3. ANALYTICS & ALERTS
@@ -283,19 +281,15 @@ if "df_final" in st.session_state:
     else:
         st.success("✅ All stock levels are healthy.")
 
-   # 4. AI ASSETS
+    # 4. AI ASSETS
     st.markdown("### 🧠 AI Content Generator")
-    
-    # Let user pick the product
     selected_name = st.selectbox("Select product to analyze:", df['Product Name'].tolist())
     target_prod = df[df['Product Name'] == selected_name].iloc[0]
     
     if st.button("Generate AI Insights"):
-        # Check usage limit
         if st.session_state.ai_usage_count >= AI_DAILY_LIMIT:
             st.error("🚀 **Usage Limit Reached**")
             st.info(f"You've used your {AI_DAILY_LIMIT} free daily AI insights. Upgrade to Pro for unlimited access!")
-        
         else:
             api_key = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", ""))
             if api_key:
@@ -311,15 +305,16 @@ if "df_final" in st.session_state:
                                 "Output strictly in two sections: [LIVE_SELLING] and [SOCIAL_CAPTION]."
                             )
                         )
-                    
                     full_text = response.text
-                    # Display results...
                     if "[LIVE_SELLING]" in full_text and "[SOCIAL_CAPTION]" in full_text:
-                        st.session_state.ai_usage_count += 1 # Increment counter
+                        st.session_state.ai_usage_count += 1
                         t1, t2 = st.tabs(["🎙️ Live Selling", "📱 Social Caption"])
                         t1.markdown(full_text.split("[LIVE_SELLING]")[1].split("[SOCIAL_CAPTION]")[0])
                         t2.markdown(full_text.split("[SOCIAL_CAPTION]")[1])
                         st.success(f"Used {st.session_state.ai_usage_count}/{AI_DAILY_LIMIT} daily credits.")
-                
                 except Exception as e:
                     st.warning(f"AI Service currently limited: {e}")
+else:
+    # This prevents the TypeError by ensuring we only show the UI if we have data
+    if not st.session_state.get("demo_mode", False) and uploaded_file is None:
+        st.info("🚀 Please upload a CSV file or click 'Load Demo Data' to begin.")
