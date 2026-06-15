@@ -14,7 +14,7 @@ def get_db():
     try:
         key_dict = json.loads(st.secrets["FIREBASE_CREDENTIALS"])
         creds = service_account.Credentials.from_service_account_info(key_dict)
-        return firestore.Client(credentials=creds)
+        return firestore.Client(credentials=creds, database="growthai")
     except Exception as e:
         st.error(f"Firestore Auth Failed: {e}")
         return None
