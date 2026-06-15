@@ -182,49 +182,48 @@ if not run_analysis and not st.session_state.demo_mode:
 
 # --- 6. RUNTIME LOGIC ---
 if run_analysis or st.session_state.demo_mode:
-    # 1. LOAD DATA SOURCE
-    if st.session_state.demo_mode:
-        df = get_mock_data("demo_user")
-        st.session_state.demo_mode = False 
-        st.info("ℹ️ **Demo Mode:** You are viewing simulated data.")
-        
+# 1. LOAD DATA SOURCE
+    # Handle Demo Mode first
+    if st.session_state.get("demo_mode", False):
+        st.session_state.df_final = get_mock_data("demo_user")
+        st.session_state.demo_mode = False
+        st.rerun() # Rerun to force the app to recognize df_final
+    # Handle File Upload
     elif uploaded_file is not None:
         try:
-            # Load the raw file
             df_raw = pd.read_csv(uploaded_file)
             required_cols = ["Product Name", "Price (PHP)", "Current Stock", "Monthly Sold", "Rating"]
             
             # Check if columns are already correct
             if all(col in df_raw.columns for col in required_cols):
-                df = df_raw[required_cols]
-                st.session_state.df_final = df
+                st.session_state.df_final = df_raw[required_cols]
+                st.rerun() # Rerun to refresh the state
             else:
-                st.warning("⚠️ **Header Mismatch:** Please map your CSV columns to our system requirements.")
+                st.warning("⚠️ **Header Mismatch:** Please map your CSV columns.")
                 
-                # Dynamic mapping interface
                 mapping = {}
                 col1, col2 = st.columns(2)
                 for req in required_cols:
                     mapping[req] = col1.selectbox(f"Select column for '{req}':", df_raw.columns, key=f"map_{req}")
                 
                 if st.button("Apply Mapping"):
-                    df = df_raw.rename(columns={v: k for k, v in mapping.items()})
-                    df = df[required_cols]
-                    st.session_state.df_final = df
+                    df_mapped = df_raw.rename(columns={v: k for k, v in mapping.items()})
+                    st.session_state.df_final = df_mapped[required_cols]
                     st.rerun()
-                st.stop() # Stop here until they click apply
+                st.stop()
                 
         except Exception as e:
             st.error(f"Error reading file: {e}")
             st.stop()
-            
-    # Retrieve the successfully mapped dataframe from session state
+
+    # Final gatekeeper: Ensure data exists before moving forward
     if "df_final" in st.session_state:
         df = st.session_state.df_final
+        if st.session_state.get("show_demo_info", False):
+            st.info("ℹ️ **Demo Mode:** You are viewing simulated data.")
     else:
         st.error("❌ Please upload a CSV file or click 'Load Demo Data'.")
         st.stop()
-
     # 2. PROCESSING & UI
     df['Weekly Forecast'] = (df['Monthly Sold'] * 0.25).astype(int)
     st.subheader("📊 Sales Overview & Forecast")
