@@ -135,13 +135,13 @@ st.session_state.brand_tone = st.sidebar.selectbox(
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🤝 About GrowthPilot")
 st.sidebar.caption("GrowthPilot AI helps sellers make data-driven decisions.")
-st.sidebar.caption("Built by [Your Name/Brand]")
-st.sidebar.info("📧 Need help? Contact: support@yourdomain.com")
+st.sidebar.caption("Built by jazzypercy")
+st.sidebar.info("📧 Need help? Contact: grantjaspertaneo@gmail.com")
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🤝 About GrowthPilot")
 st.sidebar.caption("GrowthPilot AI helps sellers make data-driven decisions.")
-st.sidebar.info("📧 Need help? [Contact Support](mailto:support@growthpilot.ai)")
+st.sidebar.info("📧 Need help? [Contact Support](mailto:grantjaspertaneo@gmail.com)")
 st.sidebar.markdown("---")
 st.sidebar.caption("v1.0.0 | GrowthPilot AI © 2026")
 
