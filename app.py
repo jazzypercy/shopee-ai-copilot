@@ -8,6 +8,13 @@ import altair as alt
 from google import genai
 from google.cloud import firestore
 from google.oauth2 import service_account
+import streamlit as st
+
+# Initialize session state variables
+if "demo_mode" not in st.session_state:
+    st.session_state.demo_mode = False
+if "df_final" not in st.session_state:
+    st.session_state.df_final = None
 
 @st.cache_resource
 def get_db():
@@ -182,25 +189,27 @@ if not run_analysis and not st.session_state.demo_mode:
 
 # --- 6. RUNTIME LOGIC ---
 if run_analysis or st.session_state.demo_mode:
-# 1. LOAD DATA SOURCE
+    # 1. LOAD DATA SOURCE
+    
     # Handle Demo Mode first
     if st.session_state.get("demo_mode", False):
         st.session_state.df_final = get_mock_data("demo_user")
         st.session_state.demo_mode = False
-        st.rerun() # Rerun to force the app to recognize df_final
+        st.session_state.show_demo_info = True # Use a flag to show info after reload
+        st.rerun() 
+
     # Handle File Upload
     elif uploaded_file is not None:
         try:
             df_raw = pd.read_csv(uploaded_file)
             required_cols = ["Product Name", "Price (PHP)", "Current Stock", "Monthly Sold", "Rating"]
             
-            # Check if columns are already correct
             if all(col in df_raw.columns for col in required_cols):
                 st.session_state.df_final = df_raw[required_cols]
-                st.rerun() # Rerun to refresh the state
+                st.session_state.show_demo_info = False
+                st.rerun()
             else:
                 st.warning("⚠️ **Header Mismatch:** Please map your CSV columns.")
-                
                 mapping = {}
                 col1, col2 = st.columns(2)
                 for req in required_cols:
@@ -216,7 +225,7 @@ if run_analysis or st.session_state.demo_mode:
             st.error(f"Error reading file: {e}")
             st.stop()
 
-    # Final gatekeeper: Ensure data exists before moving forward
+    # Final gatekeeper: Ensure data exists
     if "df_final" in st.session_state:
         df = st.session_state.df_final
         if st.session_state.get("show_demo_info", False):
@@ -224,6 +233,7 @@ if run_analysis or st.session_state.demo_mode:
     else:
         st.error("❌ Please upload a CSV file or click 'Load Demo Data'.")
         st.stop()
+
     # 2. PROCESSING & UI
     df['Weekly Forecast'] = (df['Monthly Sold'] * 0.25).astype(int)
     st.subheader("📊 Sales Overview & Forecast")
@@ -273,8 +283,6 @@ if run_analysis or st.session_state.demo_mode:
         try:
             client = genai.Client(api_key=api_key)
             with st.spinner('Generating AI insights...'):
-                
-                # --- UPDATE THIS CALL ---
                 response = client.models.generate_content(
                     model="gemini-2.0-flash", 
                     contents=(
@@ -292,13 +300,11 @@ if run_analysis or st.session_state.demo_mode:
                 t1.markdown(full_text.split("[LIVE_SELLING]")[1].split("[SOCIAL_CAPTION]")[0])
                 t2.markdown(full_text.split("[SOCIAL_CAPTION]")[1])
                 
-                # Add this part:
                 st.markdown("---")
                 st.write("Was this insight helpful?")
                 feedback = st.feedback("thumbs", key="ai_feedback")
                 
                 if feedback is not None:
-                    # Save to Firestore
                     save_user_feedback(st.session_state.user_email, feedback)
                     st.toast("Thank you for your feedback!", icon="✨")
 
