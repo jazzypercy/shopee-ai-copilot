@@ -141,6 +141,7 @@ st.sidebar.caption("v1.0.0 | GrowthPilot AI © 2026")
 if not run_analysis and not st.session_state.demo_mode:
     st.title("🚀 Growth Pilot Ai")
     st.subheader("Your AI-powered assistant for smarter inventory and faster sales.")
+    
     c1, c2, c3 = st.columns(3)
     c1.metric("Status", "Operational", "Online")
     c2.metric("Model", "Gemini 2.0", "Flash")
@@ -166,12 +167,7 @@ if not run_analysis and not st.session_state.demo_mode:
         - Use the **'Low Stock Warning Flag'** slider to set your alert level.
         - Click **'Analyze My Store'** to see your sales forecast, inventory gaps, and AI-generated social media content!
         """)
-
-    st.subheader("💡 Why use GrowthPilot AI?")
-        col1, col2 = st.columns(2)
-        col1.write("✅ **Predictive:** Forecast demand before you run out of stock.")
-        col2.write("✅ **Automated:** Get high-converting scripts in seconds.")
-    
+        
     if st.button("✨ Load Demo Data"):
         st.session_state.demo_mode = True
         st.rerun()
