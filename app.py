@@ -170,14 +170,13 @@ elif uploaded_file is not None and st.session_state.df_final is None:
         df_raw = pd.read_csv(uploaded_file)
         required_cols = ["Product Name", "Price (PHP)", "Current Stock", "Monthly Sold", "Rating"]
         
-        # AGGRESSIVE MAPPING: Map columns instantly without user intervention
+        # AGGRESSIVE MAPPING: Map columns instantly
         mapping = {}
         for req in required_cols:
-            # Look for matches: contains req name, or default to column index position
             matches = [col for col in df_raw.columns if req.lower() in col.lower() or col.lower() in req.lower()]
             mapping[req] = matches[0] if matches else df_raw.columns[required_cols.index(req)]
 
-        # Apply mapping and force immediate refresh to show dashboard
+        # Apply mapping and force immediate refresh
         df_final = df_raw.rename(columns={v: k for k, v in mapping.items()})
         st.session_state.df_final = df_final[required_cols]
         st.session_state.show_demo_info = False
@@ -192,7 +191,7 @@ if "df_final" in st.session_state and st.session_state.df_final is not None:
     if 'Weekly Forecast' not in df.columns:
         df['Weekly Forecast'] = (df['Monthly Sold'] * 0.25).astype(int)
     
-    # --- YOUR DASHBOARD FEATURES ---
+    # --- DASHBOARD FEATURES ---
     st.subheader("📊 Sales Overview & Forecast")
     col1, col2, col3 = st.columns(3)
     col1.metric("Total Monthly Sales", f"{df['Monthly Sold'].sum():,}")
@@ -241,10 +240,33 @@ else:
     # 3. LANDING PAGE
     st.title("🚀 Growth Pilot Ai")
     st.subheader("Your AI-powered assistant for smarter inventory and faster sales.")
+    st.write("Upload your product performance CSV file to generate insights, or use our demo data to get started.")
+    
     c1, c2, c3 = st.columns(3)
     c1.metric("Status", "Operational", "Online")
     c2.metric("Model", "Gemini 2.0", "Flash")
     c3.metric("Database", "Firestore", "Secure")
+    
+    st.markdown("---")
+    st.markdown("### 💡 How to Get Started")
+    
+    with st.expander("Step 1: Get your data from Shopee"):
+        st.write("""
+        To download your product performance data from Shopee:
+        1. Log in to your **Shopee Seller Centre**.
+        2. Go to the **'Products'** menu on the left sidebar and select **'My Products'**.
+        3. Click on the **'Batch Tools'** button and select **'Mass Update'**.
+        4. Click on the **'Sales Info'** tab (or 'Export' if available in your region).
+        5. Click **'Generate'**, then wait a moment and click **'Download'** to save the file to your computer.
+        """)
+        
+    with st.expander("Step 2: Use Growth Pilot AI"):
+        st.write("""
+        1. Click the **'Browse files'** button in the sidebar.
+        2. Upload the CSV file you just downloaded from Shopee.
+        3. Our system will automatically process your data and display your inventory analytics immediately.
+        """)
+
     st.markdown("---")
     if st.button("✨ Load Demo Data"):
         st.session_state.demo_mode = True
