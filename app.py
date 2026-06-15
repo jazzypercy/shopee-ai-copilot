@@ -22,6 +22,18 @@ def get_db():
 db = get_db()
 
 # --- 1. PERSISTENT DATA HELPERS ---
+def save_user_feedback(email, feedback_score):
+    if db:
+        # We store feedback in a collection called "feedback"
+        # We use the email + current timestamp as a document ID to keep them unique
+        timestamp = datetime.datetime.now().isoformat()
+        doc_id = f"{email}_{timestamp}"
+        db.collection("feedback").document(doc_id).set({
+            "email": email,
+            "score": feedback_score,
+            "timestamp": timestamp
+        })
+        
 def save_user_trial(email, start_time):
     if db:
         db.collection("users").document(email).set({"start_time": start_time.isoformat()})
@@ -111,9 +123,30 @@ st.sidebar.download_button("📥 Download CSV Template", get_sample_csv_template
 st.session_state.LOW_STOCK_THRESHOLD = st.sidebar.slider("Low Stock Warning Flag", 5, 1000, st.session_state.LOW_STOCK_THRESHOLD)
 run_analysis = st.sidebar.button("Analyze My Store", type="primary", use_container_width=True)
 
+# --- FOOTER IN SIDEBAR ---
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 🤝 About GrowthPilot")
+st.sidebar.caption("GrowthPilot AI helps sellers make data-driven decisions.")
+st.sidebar.caption("Built by [Your Name/Brand]")
+st.sidebar.info("📧 Need help? Contact: support@yourdomain.com")
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 🤝 About GrowthPilot")
+st.sidebar.caption("GrowthPilot AI helps sellers make data-driven decisions.")
+st.sidebar.info("📧 Need help? [Contact Support](mailto:support@growthpilot.ai)")
+st.sidebar.markdown("---")
+st.sidebar.caption("v1.0.0 | GrowthPilot AI © 2026")
+
 # --- 5. LANDING PAGE ---
 if not run_analysis and not st.session_state.demo_mode:
     st.title("🚀 Growth Pilot Ai")
+    st.subheader("Your AI-powered assistant for smarter inventory and faster sales.")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Status", "Operational", "Online")
+    c2.metric("Model", "Gemini 2.0", "Flash")
+    c3.metric("Database", "Firestore", "Secure")
+    
+    st.markdown("---")
     
     with st.expander("📖 How to use GrowthPilot AI", expanded=False):
         st.markdown("""
@@ -133,28 +166,60 @@ if not run_analysis and not st.session_state.demo_mode:
         - Use the **'Low Stock Warning Flag'** slider to set your alert level.
         - Click **'Analyze My Store'** to see your sales forecast, inventory gaps, and AI-generated social media content!
         """)
-        
+
+    st.subheader("💡 Why use GrowthPilot AI?")
+        col1, col2 = st.columns(2)
+        col1.write("✅ **Predictive:** Forecast demand before you run out of stock.")
+        col2.write("✅ **Automated:** Get high-converting scripts in seconds.")
+    
     if st.button("✨ Load Demo Data"):
         st.session_state.demo_mode = True
         st.rerun()
 
 # --- 6. RUNTIME LOGIC ---
 if run_analysis or st.session_state.demo_mode:
-    # 1. DATA LOADING
+    # 1. LOAD DATA SOURCE
     if st.session_state.demo_mode:
         df = get_mock_data("demo_user")
         st.session_state.demo_mode = False 
+        st.info("ℹ️ **Demo Mode:** You are viewing simulated data.")
+        
     elif uploaded_file is not None:
         try:
-            df = pd.read_csv(uploaded_file)
-            required = ["Product Name", "Price (PHP)", "Current Stock", "Monthly Sold", "Rating"]
-            if not all(col in df.columns for col in required):
-                st.warning("⚠️ Column Mismatch. Please check file headers.")
-                st.stop()
+            # Load the raw file
+            df_raw = pd.read_csv(uploaded_file)
+            required_cols = ["Product Name", "Price (PHP)", "Current Stock", "Monthly Sold", "Rating"]
+            
+            # Check if columns are already correct
+            if all(col in df_raw.columns for col in required_cols):
+                df = df_raw[required_cols]
+                st.session_state.df_final = df
+            else:
+                st.warning("⚠️ **Header Mismatch:** Please map your CSV columns to our system requirements.")
+                
+                # Dynamic mapping interface
+                mapping = {}
+                col1, col2 = st.columns(2)
+                for req in required_cols:
+                    mapping[req] = col1.selectbox(f"Select column for '{req}':", df_raw.columns, key=f"map_{req}")
+                
+                if st.button("Apply Mapping"):
+                    df = df_raw.rename(columns={v: k for k, v in mapping.items()})
+                    df = df[required_cols]
+                    st.session_state.df_final = df
+                    st.rerun()
+                st.stop() # Stop here until they click apply
+                
         except Exception as e:
-            st.error(f"Error: {e}")
+            st.error(f"Error reading file: {e}")
             st.stop()
-    else: st.stop()
+            
+    # Retrieve the successfully mapped dataframe from session state
+    if "df_final" in st.session_state:
+        df = st.session_state.df_final
+    else:
+        st.error("❌ Please upload a CSV file or click 'Load Demo Data'.")
+        st.stop()
 
     # 2. PROCESSING & UI
     df['Weekly Forecast'] = (df['Monthly Sold'] * 0.25).astype(int)
@@ -210,9 +275,23 @@ if run_analysis or st.session_state.demo_mode:
                     contents=f"Analyze {top_prod['Product Name']}. Output as: [LIVE_SELLING] (script) and [SOCIAL_CAPTION] (caption)."
                 )
             full_text = response.text
+            
+            # --- START OF PLACEMENT ---
             if "[LIVE_SELLING]" in full_text and "[SOCIAL_CAPTION]" in full_text:
                 t1, t2 = st.tabs(["🎙️ Live Selling", "📱 Social Caption"])
                 t1.markdown(full_text.split("[LIVE_SELLING]")[1].split("[SOCIAL_CAPTION]")[0])
                 t2.markdown(full_text.split("[SOCIAL_CAPTION]")[1])
+                
+                # Add this part:
+                st.markdown("---")
+                st.write("Was this insight helpful?")
+                feedback = st.feedback("thumbs", key="ai_feedback")
+                
+                if feedback is not None:
+                    # Save to Firestore
+                    save_user_feedback(st.session_state.user_email, feedback)
+                    st.toast("Thank you for your feedback!", icon="✨")
+            # --- END OF PLACEMENT ---
+
         except Exception as e:
             st.warning(f"AI Service limited: {e}")
