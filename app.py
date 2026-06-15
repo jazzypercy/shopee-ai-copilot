@@ -104,6 +104,23 @@ if not st.session_state.trial_active:
 # --- 4. CONTROL PANEL ---
 st.sidebar.header("🛡️ System Control Panel")
 
+with st.sidebar.popover("❓ How to use this app"):
+    st.markdown("### 💡 Quick Guide")
+    
+    st.markdown("#### Step 1: Get your data from Shopee")
+    st.write("""
+    1. Go to [seller.shopee.ph](https://seller.shopee.ph/). (Use desktop mode on mobile).
+    2. Log in and click **'Business Insights'** in the sidebar.
+    3. Select the **'Product'** tab.
+    4. Click **'Export Data'** to download your **.CSV** file.
+    """)
+    
+    st.markdown("#### Step 2: Upload")
+    st.write("Click the 'Browse files' button in this sidebar and select your downloaded CSV.")
+    
+    st.markdown("#### Step 3: Analyze")
+    st.write("Adjust the 'Low Stock Warning Flag' slider, then click **'Analyze My Store'** to view your forecasts and generate AI insights.")
+
 # Sidebar Timer: Only shows if trial is active
 if st.session_state.trial_active and "trial_start_time" in st.session_state:
     elapsed = datetime.datetime.now() - st.session_state.trial_start_time
@@ -201,13 +218,16 @@ if run_analysis or st.session_state.get("demo_mode", False):
             st.warning("⚠️ Please upload a CSV file or enable Demo Mode first.")
 
 # 3. DASHBOARD DISPLAY OR LANDING PAGE 
-# (This is at the same indentation level as Trigger Logic, so it always runs)
 if st.session_state.get("df_final") is not None:
     df = st.session_state.df_final
     
-    # --- DASHBOARD UI ---
-    if 'Weekly Forecast' not in df.columns:
-        df['Weekly Forecast'] = (df['Monthly Sold'] * 0.25).astype(int)
+    # --- CALCULATED COLUMNS ---
+    if 'Estimated Demand' not in df.columns:
+        # Using 30-day average, projected over 7 days
+        df['Estimated Demand'] = (df['Monthly Sold'] / 30 * 7).astype(int)
+    
+    # Calculate Total Earned
+    df['Total Earned'] = df['Price (PHP)'] * df['Monthly Sold']
     
     st.subheader("📊 Sales Overview & Forecast")
     col1, col2, col3 = st.columns(3)
@@ -216,11 +236,22 @@ if st.session_state.get("df_final") is not None:
     col3.metric("Avg. Forecast Accuracy", "92%")
     
     st.markdown("---")
-    st.markdown("### 📈 Demand vs. Stock Analysis")
-    chart_data = df.melt('Product Name', value_vars=['Current Stock', 'Weekly Forecast'], var_name='Metric', value_name='Units')
+    
+    # --- PRODUCT DATA TABLE ---
+    st.markdown("### 📋 Product Performance Details")
+    cols_to_show = ["Product Name", "Price (PHP)", "Monthly Sold", "Total Earned"]
+    if "Rating" in df.columns:
+        cols_to_show.append("Rating")
+    st.dataframe(df[cols_to_show], use_container_width=True)
+    
+    st.markdown("---")
+    
+    # --- CHART ---
+    st.markdown("### 📈 Current Stock vs. Estimated Demand (Next 7 Days)")
+    chart_data = df.melt('Product Name', value_vars=['Current Stock', 'Estimated Demand'], var_name='Metric', value_name='Units')
     chart = alt.Chart(chart_data).mark_bar().encode(
         x=alt.X('Units', title='Units'), y=alt.Y('Product Name', title='', sort='-x'),
-        color=alt.Color('Metric', scale=alt.Scale(domain=['Current Stock', 'Weekly Forecast'], range=['#60A5FA', '#F87171'])),
+        color=alt.Color('Metric', scale=alt.Scale(domain=['Current Stock', 'Estimated Demand'], range=['#60A5FA', '#F87171'])),
         tooltip=['Product Name', 'Metric', 'Units']
     ).properties(height=300)
     st.altair_chart(chart, use_container_width=True)
@@ -231,7 +262,7 @@ if st.session_state.get("df_final") is not None:
     
     st.info(f"Summary: {len(df[df['Stock-to-Sales Ratio'] < 0.5])} items need attention.")
     with st.expander("View Predicted Inventory Actions"):
-        st.dataframe(df[['Product Name', 'Weekly Forecast', 'Predicted Status']], use_container_width=True)
+        st.dataframe(df[['Product Name', 'Estimated Demand', 'Predicted Status']], use_container_width=True)
         
     if not df[df['Current Stock'] <= st.session_state.LOW_STOCK_THRESHOLD].empty:
         for _, row in df[df['Current Stock'] <= st.session_state.LOW_STOCK_THRESHOLD].iterrows():
@@ -254,11 +285,43 @@ if st.session_state.get("df_final") is not None:
                 st.markdown(response.text)
             except Exception:
                 st.error("🙏 Our AI assistant is currently at maximum capacity.")
-
-else:
-    # --- LANDING PAGE ---
-    st.title("🚀 Growth Pilot Ai")
-    st.subheader("Your AI-powered assistant for smarter inventory and faster sales.")
-    if st.button("✨ Load Demo Data"):
-        st.session_state.demo_mode = True
-        st.rerun()
+    else:
+        # 3. LANDING PAGE
+        st.title("🚀 Growth Pilot Ai")
+        st.subheader("Your AI-powered assistant for smarter inventory and faster sales.")
+        st.write("Upload your product performance CSV file to generate insights, or use our demo data to get started.")
+    
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Status", "Operational", "Online")
+        c2.metric("Model", "Gemini 2.0", "Flash")
+        c3.metric("Database", "Firestore", "Secure")
+        
+        st.markdown("---")
+        st.markdown("### 💡 How to Get Started")
+        
+        with st.expander("Step 1: Get your data from Shopee"):
+            st.write("""
+            1. Open your browser and go to [seller.shopee.ph](https://seller.shopee.ph/). 
+               *(Note: You must use a computer or browser in desktop mode when using a mobile device. The Shopee mobile app does not support downloading CSV files.)*
+            2. Log in to your shop.
+            3. On the left sidebar, click **'Business Insights'**.
+            4. Select the **'Product'** tab.
+            5. Click the **'Export Data'** button to download the report as a **.CSV** file.
+            """)
+            
+        with st.expander("Step 2: Upload your file"):
+            st.write("""
+            1. Click the **'Browse files'** button in the sidebar.
+            2. Upload the CSV file you just downloaded from Shopee.
+            """)
+    
+        with st.expander("Step 3: Analyze and Grow"):
+            st.write("""
+            1. Use the **'Low Stock Warning Flag'** slider to set your alert level. This allows you to define the minimum number of stocks at which the system will automatically flag for urgent reordering.
+            2. Click **'Analyze My Store'** to see your sales forecast, inventory gaps, and AI-generated social media content! You can even choose the tone for your AI-generated social media content!
+            """)
+    
+        st.markdown("---")
+        if st.button("✨ Load Demo Data"):
+            st.session_state.demo_mode = True
+            st.rerun()
