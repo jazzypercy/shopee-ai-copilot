@@ -4,3 +4,4 @@ curl_cffi
 google-genai
 google-cloud-firestore
 google-auth
+authlib
