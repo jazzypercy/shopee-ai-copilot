@@ -248,6 +248,21 @@ if "df_final" in st.session_state:
     
     st.altair_chart(chart, use_container_width=True)
     
+    st.markdown("#### 📊 Text Summary")
+    deficit_items = df[df['Weekly Forecast'] > df['Current Stock']]['Product Name'].tolist()
+    surplus_items = df[df['Current Stock'] >= df['Weekly Forecast']]['Product Name'].tolist()
+    
+    if deficit_items:
+        st.write(f"⚠️ **Attention needed:** We predict high demand for **{', '.join(deficit_items[:2])}**... (check stock levels).")
+    
+    if surplus_items:
+        st.write(f"✅ **Healthy stock:** Your inventory for **{', '.join(surplus_items[:2])}** is well-aligned with current sales trends.")
+    
+    st.caption("This summary highlights products where forecasted demand is currently outpacing your available stock.")
+
+    # 3. ANALYTICS & ALERTS
+    st.markdown("#### 📝 Key Takeaways")
+    
     # 3. ANALYTICS & ALERTS
     st.markdown("#### 📝 Key Takeaways")
     df['Gap'] = df['Weekly Forecast'] - df['Current Stock']
