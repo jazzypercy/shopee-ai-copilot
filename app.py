@@ -266,7 +266,7 @@ else:
         2. Upload the CSV file you just downloaded from Shopee.
         """)
 
-    with st.expander("Step 3: Analyze and Grow")
+    with st.expander("Step 3: Analyze and Grow"):
         st.write("""
         1. Use the **'Low Stock Warning Flag'** slider to set your alert level.
         2. Click **'Analyze My Store'** to see your sales forecast, inventory gaps, and AI-generated social media content! You can even choose the tone for your AI-generated social media content!
