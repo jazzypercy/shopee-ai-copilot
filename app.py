@@ -188,22 +188,24 @@ def process_data(file_obj=None, use_demo=False):
     return None
     
 # 2. TRIGGER LOGIC: Detects user intent
-# We ONLY run this if the user specifically clicked "Analyze" or "Load Demo"
+# We only want to process data if the user explicitly clicked a button to do so.
 if run_analysis or st.session_state.get("demo_mode", False):
     
     use_demo = st.session_state.get("demo_mode", False)
-    
-    # Process the data using our "Brain"
     result = process_data(file_obj=uploaded_file, use_demo=use_demo)
     
+    # Only update the session state if we actually got a result
     if result is not None:
         st.session_state.df_final = result
         st.session_state.demo_mode = False 
     else:
-        # Only show the warning if they tried to click Analyze
+        # Only clear the session state if they clicked Analyze and it failed
         if run_analysis: 
+            st.session_state.df_final = None
             st.warning("⚠️ Please upload a CSV file or enable Demo Mode first.")
-        st.session_state.df_final = None
+
+# IMPORTANT: If NO button was clicked, we do NOT touch st.session_state.df_final
+# This ensures that when the AI button is clicked, the data stays exactly where it is.
         
    # 3. DASHBOARD DISPLAY OR LANDING PAGE
     if st.session_state.get("df_final") is not None:
@@ -263,7 +265,6 @@ else:
     # --- LANDING PAGE (Shown when no data is loaded) ---
     st.title("🚀 Growth Pilot Ai")
     st.subheader("Your AI-powered assistant for smarter inventory and faster sales.")
-    st.write("Upload your product performance CSV file to generate insights, or use our demo data to get started.")
     
     c1, c2, c3 = st.columns(3)
     c1.metric("Status", "Operational", "Online")
