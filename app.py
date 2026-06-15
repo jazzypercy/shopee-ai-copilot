@@ -78,51 +78,56 @@ if "trial_active" not in st.session_state: st.session_state.trial_active = False
 if "LOW_STOCK_THRESHOLD" not in st.session_state: st.session_state.LOW_STOCK_THRESHOLD = 25
 if "demo_mode" not in st.session_state: st.session_state.demo_mode = False
 
-# --- 3. THE STRICT TRIAL GATE ---
-if not st.session_state.trial_active:
+# --- 3. GOOGLE OAUTH & TRIAL GATE ---
+if not st.session_state.get("user_logged_in", False):
     st.title("Welcome to GrowthPilot AI")
-    email_input = st.text_input("Enter your email:")
-    if st.button("Access My Trial"):
-        if not email_input: st.warning("Please enter an email.")
-        elif db is None: st.error("System connection error.")
-        else:
-            existing_start = get_user_trial(email_input)
-            if existing_start:
-                if is_trial_expired(existing_start):
-                    st.error("❌ Your 24-hour trial period has ended.")
-                    st.stop()
-                st.session_state.trial_start_time = existing_start
-            else:
-                st.session_state.trial_start_time = datetime.datetime.now()
-                save_user_trial(email_input, st.session_state.trial_start_time)
-            
-            st.session_state.user_email = email_input
-            st.session_state.trial_active = True
-            
-            # This clears the dashboard so the Landing Page shows up fresh
-            st.session_state.df_final = None
-            st.session_state.demo_mode = False
-            
-            st.rerun()
+    st.write("Please sign in to access your dashboard.")
+    st.login()
     st.stop()
+
+# Once logged in, capture user identity
+user_email = st.user.email
+st.session_state.user_email = user_email
+st.session_state.user_logged_in = True
+
+ADMIN_EMAIL = "grantjaspertaneo@gmail.com"
+
+# Admin has full access, others go through trial logic
+if user_email == ADMIN_EMAIL:
+    st.session_state.trial_active = True
+else:
+    # Existing Trial Logic
+    if not st.session_state.trial_active:
+        existing_start = get_user_trial(user_email)
+        if existing_start:
+            if is_trial_expired(existing_start):
+                st.error("❌ Your 24-hour trial period has ended.")
+                st.stop()
+            st.session_state.trial_start_time = existing_start
+        else:
+            st.session_state.trial_start_time = datetime.datetime.now()
+            save_user_trial(user_email, st.session_state.trial_start_time)
+            
+        st.session_state.trial_active = True
+        st.rerun()
 
 # --- 4. CONTROL PANEL ---
 st.sidebar.header("🛡️ System Control Panel")
 
-
-# Sidebar Timer: Only shows if trial is active
-if st.session_state.trial_active and "trial_start_time" in st.session_state:
-    elapsed = datetime.datetime.now() - st.session_state.trial_start_time
-    remaining = datetime.timedelta(hours=24) - elapsed
-    
-    if remaining.total_seconds() > 0:
-        hours, remainder = divmod(int(remaining.total_seconds()), 3600)
-        minutes, _ = divmod(remainder, 60)
-        st.sidebar.info(f"⏳ Trial ends in: **{hours}h {minutes}m**")
-    else:
-        st.sidebar.error("Trial expired.")
-        st.session_state.trial_active = False
-        st.rerun()
+# Sidebar Timer: Only shows for trial users, not admin
+if st.session_state.get("user_email") != ADMIN_EMAIL and st.session_state.trial_active:
+    if "trial_start_time" in st.session_state:
+        elapsed = datetime.datetime.now() - st.session_state.trial_start_time
+        remaining = datetime.timedelta(hours=24) - elapsed
+        
+        if remaining.total_seconds() > 0:
+            hours, remainder = divmod(int(remaining.total_seconds()), 3600)
+            minutes, _ = divmod(remainder, 60)
+            st.sidebar.info(f"⏳ Trial ends in: **{hours}h {minutes}m**")
+        else:
+            st.sidebar.error("Trial expired.")
+            st.session_state.trial_active = False
+            st.rerun()
 
 uploaded_file = st.sidebar.file_uploader("Upload Product Performance CSV", type=["csv"])
 
