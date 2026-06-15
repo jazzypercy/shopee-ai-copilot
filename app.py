@@ -11,20 +11,31 @@ from google.oauth2 import service_account
 
 @st.cache_resource
 def get_db():
-    key_dict = json.loads(st.secrets["FIREBASE_CREDENTIALS"])
-    creds = service_account.Credentials.from_service_account_info(key_dict)
-    return firestore.Client(credentials=creds)
+    try:
+        key_dict = json.loads(st.secrets["FIREBASE_CREDENTIALS"])
+        creds = service_account.Credentials.from_service_account_info(key_dict)
+        return firestore.Client(credentials=creds)
+    except Exception as e:
+        st.error(f"Firestore Auth Failed: {e}")
+        return None
 
 db = get_db()
 
 # --- 1. PERSISTENT DATA HELPERS ---
 def save_user_trial(email, start_time):
-    db.collection("users").document(email).set({"start_time": start_time.isoformat()})
+    if db:
+        db.collection("users").document(email).set({"start_time": start_time.isoformat()})
 
 def get_user_trial(email):
-    doc = db.collection("users").document(email).get()
-    if doc.exists:
-        return datetime.datetime.fromisoformat(doc.to_dict()["start_time"])
+    if not db:
+        return None
+    try:
+        doc_ref = db.collection("users").document(email)
+        doc = doc_ref.get()
+        if doc.exists:
+            return datetime.datetime.fromisoformat(doc.to_dict()["start_time"])
+    except Exception as e:
+        st.warning(f"Could not connect to database: {e}")
     return None
 
 def is_trial_expired(start_time):
@@ -40,30 +51,29 @@ if "demo_mode" not in st.session_state: st.session_state.demo_mode = False
 # --- 3. THE STRICT TRIAL GATE ---
 if not st.session_state.trial_active:
     st.title("Welcome to GrowthPilot AI")
-    email_input = st.text_input("Enter your email to start/resume your trial:")
+    email_input = st.text_input("Enter your email:")
     
     if st.button("Access My Trial"):
         if not email_input:
-            st.warning("Please enter a valid email address.")
+            st.warning("Please enter an email.")
+        elif db is None:
+            st.error("System connection error. Please refresh or contact support.")
         else:
-            disposable_domains = ["mailinator.com", "10minutemail.com", "guerrillamail.com"]
-            if any(domain in email_input for domain in disposable_domains):
-                st.error("Please use a professional or personal email.")
-            else:
-                existing_start = get_user_trial(email_input)
-                if existing_start:
-                    if is_trial_expired(existing_start):
-                        st.error("❌ Your 24-hour trial period has ended.")
-                        st.stop()
-                    else:
-                        st.session_state.trial_start_time = existing_start
+            # This block is correctly aligned with the 'else' above
+            existing_start = get_user_trial(email_input)
+            if existing_start:
+                if is_trial_expired(existing_start):
+                    st.error("❌ Your 24-hour trial period has ended.")
+                    st.stop()
                 else:
-                    st.session_state.trial_start_time = datetime.datetime.now()
-                    save_user_trial(email_input, st.session_state.trial_start_time)
-                
-                st.session_state.user_email = email_input
-                st.session_state.trial_active = True
-                st.rerun()
+                    st.session_state.trial_start_time = existing_start
+            else:
+                st.session_state.trial_start_time = datetime.datetime.now()
+                save_user_trial(email_input, st.session_state.trial_start_time)
+            
+            st.session_state.user_email = email_input
+            st.session_state.trial_active = True
+            st.rerun()
     st.stop()
 
 # --- 4. CONTROL PANEL ---
