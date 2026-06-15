@@ -252,19 +252,24 @@ else:
     
     with st.expander("Step 1: Get your data from Shopee"):
         st.write("""
-        To download your product performance data from Shopee:
-        1. Log in to your **Shopee Seller Centre**.
-        2. Go to the **'Products'** menu on the left sidebar and select **'My Products'**.
-        3. Click on the **'Batch Tools'** button and select **'Mass Update'**.
-        4. Click on the **'Sales Info'** tab (or 'Export' if available in your region).
-        5. Click **'Generate'**, then wait a moment and click **'Download'** to save the file to your computer.
+        1. Open your browser and go to [seller.shopee.ph](https://seller.shopee.ph/). 
+           *(Note: You must use a computer or browser in desktop mode when using a mobile device. The Shopee mobile app does not support downloading CSV files.)*
+        2. Log in to your shop.
+        3. On the left sidebar, click **'Business Insights'**.
+        4. Select the **'Product'** tab.
+        5. Click the **'Export Data'** button to download the report as a **.CSV** file.
         """)
         
-    with st.expander("Step 2: Use Growth Pilot AI"):
+    with st.expander("Step 2: Upload your file"):
         st.write("""
         1. Click the **'Browse files'** button in the sidebar.
         2. Upload the CSV file you just downloaded from Shopee.
-        3. Our system will automatically process your data and display your inventory analytics immediately.
+        """)
+
+    with st.expander("Step 3: Analyze and Grow**)
+        st.write("""
+        1. Use the **'Low Stock Warning Flag'** slider to set your alert level.
+        2. Click **'Analyze My Store'** to see your sales forecast, inventory gaps, and AI-generated social media content! You can even choose the tone for your AI-generated social media content!
         """)
 
     st.markdown("---")
