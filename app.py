@@ -188,10 +188,9 @@ def process_data(file_obj=None, use_demo=False):
     return None
     
 # 2. TRIGGER LOGIC: Detects user intent
-# This logic fires when you click "Analyze My Store" OR "Load Demo"
+# We ONLY run this if the user specifically clicked "Analyze" or "Load Demo"
 if run_analysis or st.session_state.get("demo_mode", False):
     
-    # Determine the source
     use_demo = st.session_state.get("demo_mode", False)
     
     # Process the data using our "Brain"
@@ -199,13 +198,12 @@ if run_analysis or st.session_state.get("demo_mode", False):
     
     if result is not None:
         st.session_state.df_final = result
-        st.session_state.demo_mode = False # Reset demo flag
+        st.session_state.demo_mode = False 
     else:
-        # --- THE POPUP LOGIC ---
-        # If result is None, the processing failed or there was no file
-        if not use_demo and uploaded_file is None:
+        # Only show the warning if they tried to click Analyze
+        if run_analysis: 
             st.warning("⚠️ Please upload a CSV file or enable Demo Mode first.")
-        st.session_state.df_final = None # Ensure nothing renders
+        st.session_state.df_final = None
         
    # 3. DASHBOARD DISPLAY OR LANDING PAGE
     if st.session_state.get("df_final") is not None:
