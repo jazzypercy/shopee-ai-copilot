@@ -192,15 +192,15 @@ if not run_analysis and not st.session_state.demo_mode:
         st.rerun()
 
 # --- 6. RUNTIME LOGIC ---
-
-# 1. LOAD DATA SOURCE (Acquisition Logic)
+# 1. LOAD DATA SOURCE
 if st.session_state.get("demo_mode", False):
     st.session_state.df_final = get_mock_data("demo_user")
     st.session_state.demo_mode = False
     st.session_state.show_demo_info = True
     st.rerun()
 
-elif uploaded_file is not None:
+# Only process file upload if a file is actually present
+elif uploaded_file is not None and "df_final" not in st.session_state:
     try:
         df_raw = pd.read_csv(uploaded_file)
         required_cols = ["Product Name", "Price (PHP)", "Current Stock", "Monthly Sold", "Rating"]
@@ -225,7 +225,7 @@ elif uploaded_file is not None:
         st.error(f"Error reading file: {e}")
         st.stop()
 
-# 2. RUNTIME ANALYSIS (Only run if we actually have data)
+# 2. RUNTIME ANALYSIS (Only run if we have data)
 if "df_final" in st.session_state:
     df = st.session_state.df_final
     if st.session_state.get("show_demo_info", False):
