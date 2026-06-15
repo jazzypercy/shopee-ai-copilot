@@ -158,34 +158,42 @@ st.sidebar.caption("v1.0.0 | GrowthPilot AI © 2026")
 
 # --- 5 & 6. UNIFIED UI & RUNTIME LOGIC ---
 
-# 1. LOAD DATA SOURCE (Aggressive Auto-Mapper)
-if st.session_state.get("demo_mode", False):
-    st.session_state.df_final = get_mock_data("demo_user")
-    st.session_state.demo_mode = False
-    st.session_state.show_demo_info = True
-    st.rerun()
+# 1. THE MASTER ANALYZE TRIGGER
+# We clear the previous data first to ensure we are always looking at the freshest input
+if run_analysis:
+    # Reset the dashboard state for a fresh analysis
+    st.session_state.df_final = None 
+    
+    # A. Check if user wants Demo OR uploaded a file
+    if st.session_state.get("demo_mode", False):
+        st.session_state.df_final = get_mock_data("demo_user")
+        st.session_state.show_demo_info = True
+        st.session_state.demo_mode = False # Reset demo flag
+    
+    elif uploaded_file is not None:
+        # B. File Format Validator
+        if not uploaded_file.name.endswith('.csv'):
+            st.error("❌ Invalid file format. Please upload a .csv file.")
+        else:
+            try:
+                df_raw = pd.read_csv(uploaded_file)
+                required_cols = ["Product Name", "Price (PHP)", "Current Stock", "Monthly Sold", "Rating"]
+                
+                # Auto-Mapping
+                mapping = {}
+                for req in required_cols:
+                    matches = [col for col in df_raw.columns if req.lower() in col.lower() or col.lower() in req.lower()]
+                    mapping[req] = matches[0] if matches else df_raw.columns[required_cols.index(req)]
+                
+                st.session_state.df_final = df_raw.rename(columns={v: k for k, v in mapping.items()})[required_cols]
+                st.session_state.show_demo_info = False
+            except Exception as e:
+                st.error(f"🙏 Error processing file: {e}")
+    else:
+        # C. Warning "Popup"
+        st.warning("⚠️ Please upload a CSV file or enable Demo Mode first.")
 
-elif uploaded_file is not None and st.session_state.df_final is None:
-    try:
-        df_raw = pd.read_csv(uploaded_file)
-        required_cols = ["Product Name", "Price (PHP)", "Current Stock", "Monthly Sold", "Rating"]
-        
-        # AGGRESSIVE MAPPING: Map columns instantly
-        mapping = {}
-        for req in required_cols:
-            matches = [col for col in df_raw.columns if req.lower() in col.lower() or col.lower() in req.lower()]
-            mapping[req] = matches[0] if matches else df_raw.columns[required_cols.index(req)]
-
-        # Apply mapping and force immediate refresh
-        df_final = df_raw.rename(columns={v: k for k, v in mapping.items()})
-        st.session_state.df_final = df_final[required_cols]
-        st.session_state.show_demo_info = False
-        st.rerun()
-    except Exception as e:
-        st.error(f"🙏 Could not process file: {e}")
-        st.stop()
-
-# 2. RUNTIME ANALYSIS (Dashboard)
+# 2. RUNTIME ANALYSIS (Display Area)
 if "df_final" in st.session_state and st.session_state.df_final is not None:
     df = st.session_state.df_final
     if 'Weekly Forecast' not in df.columns:
@@ -208,10 +216,15 @@ if "df_final" in st.session_state and st.session_state.df_final is not None:
     ).properties(height=300)
     st.altair_chart(chart, use_container_width=True)
 
-    st.markdown("#### 📊 Text Summary")
-    deficit_items = df[df['Weekly Forecast'] > df['Current Stock']]['Product Name'].tolist()
-    if deficit_items: st.write(f"⚠️ **Attention:** High demand for **{', '.join(deficit_items[:2])}**.")
+    # --- UPDATED TEXT SUMMARY & PREDICTIONS ---
+    st.markdown("#### 📊 Inventory Insights & Predictions")
+    df['Stock-to-Sales Ratio'] = df['Current Stock'] / (df['Monthly Sold'] + 1)
+    df['Predicted Status'] = df.apply(lambda x: "Restock Soon" if x['Stock-to-Sales Ratio'] < 0.5 else "Stable", axis=1)
     
+    st.info(f"Summary: You have {len(df[df['Stock-to-Sales Ratio'] < 0.5])} items that may need urgent attention based on sales velocity.")
+    with st.expander("View Predicted Inventory Actions"):
+        st.dataframe(df[['Product Name', 'Weekly Forecast', 'Predicted Status']], use_container_width=True)
+        
     if not df[df['Current Stock'] <= st.session_state.LOW_STOCK_THRESHOLD].empty:
         st.markdown("### 🚨 High Priority Logistics Alerts")
         for _, row in df[df['Current Stock'] <= st.session_state.LOW_STOCK_THRESHOLD].iterrows():
@@ -234,7 +247,7 @@ if "df_final" in st.session_state and st.session_state.df_final is not None:
                 st.markdown(response.text)
                 st.success(f"Generated! ({st.session_state.ai_usage_count}/{AI_DAILY_LIMIT})")
             except Exception:
-                st.error("🙏 AI service is busy.")
+                st.error("🙏 Our AI assistant is currently at maximum capacity. Please try again in a moment.")
 
 else:
     # 3. LANDING PAGE
@@ -249,7 +262,6 @@ else:
     
     st.markdown("---")
     st.markdown("### 💡 How to Get Started")
-    
     with st.expander("Step 1: Get your data from Shopee"):
         st.write("""
         1. Open your browser and go to [seller.shopee.ph](https://seller.shopee.ph/). 
@@ -259,19 +271,18 @@ else:
         4. Select the **'Product'** tab.
         5. Click the **'Export Data'** button to download the report as a **.CSV** file.
         """)
-        
     with st.expander("Step 2: Upload your file"):
         st.write("""
         1. Click the **'Browse files'** button in the sidebar.
         2. Upload the CSV file you just downloaded from Shopee.
         """)
-
     with st.expander("Step 3: Analyze and Grow"):
         st.write("""
         1. Use the **'Low Stock Warning Flag'** slider to set your alert level. This allows you to define the minimum number of stocks at which the system will automatically flag for urgent reordering.
         2. Click **'Analyze My Store'** to see your sales forecast, inventory gaps, and AI-generated social media content! You can even choose the tone for your AI-generated social media content!
         """)
 
+    
     st.markdown("---")
     if st.button("✨ Load Demo Data"):
         st.session_state.demo_mode = True
