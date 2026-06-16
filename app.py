@@ -373,7 +373,12 @@ if st.session_state.get("df_final") is not None:
                 
                 st.markdown(response.text)
             except Exception as e:
-                st.error(f"🙏 Our AI assistant is currently at maximum capacity. Error: {e}")
+                # Log the actual error to the console for you to see
+                import logging
+                logging.error(f"AI Generation Error: {e}", exc_info=True)
+                
+                # Show only the friendly message to the user
+                st.error("🙏 Our AI assistant is currently at maximum capacity. Please try again in a moment.")
 else:
     # 3. LANDING PAGE
     st.title("🚀 Growth Pilot Ai")
