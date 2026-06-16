@@ -10,7 +10,7 @@ from google.cloud import firestore
 from google.oauth2 import service_account
 
 # --- 1. SESSION STATE & CONFIG ---
-st.set_page_config(page_title="GrowthPilot AI", layout="wide", page_icon="🛍️")
+st.set_page_config(page_title="DisCartT AI", layout="wide", page_icon="🛒")
 
 # Global Settings
 ADMIN_EMAIL = "grantjaspertaneo@gmail.com"
@@ -72,9 +72,9 @@ def show_pricing_table():
 # --- 2. GOOGLE OAUTH & SUBSCRIPTION GATE ---
 if not st.user.is_logged_in:
     # --- MARKETING LANDING PAGE ---
-    st.title("🛍️ Welcome to GrowthPilot AI")
-    st.markdown("### Take the guesswork out of your Shopee business.")
-    st.write("GrowthPilot uses AI to forecast demand, prevent stockouts, and boost your sales.")
+    st.title("🛒 Welcome to DisCartT AI")
+    st.markdown("### Ang AI assistant para sa matalinong diskarte sa iyong online business!")
+    st.write("DisCartT uses AI to forecast demand, prevent stockouts, and boost your sales.")
     
     col1, col2 = st.columns(2)
     with col1:
@@ -98,7 +98,6 @@ if not user_email:
         st.rerun()
     st.stop()
 
-# --- 3. SYNC USER TIER FROM FIRESTORE ---
 # --- 3. SYNC USER TIER & USAGE FROM FIRESTORE ---
 if db:
     user_doc_ref = db.collection("users").document(user_email)
@@ -201,8 +200,8 @@ with st.sidebar.container(border=True):
         st.rerun()
         
 st.sidebar.markdown("---")
-st.sidebar.markdown("### 🤝 About GrowthPilot")
-st.sidebar.caption("GrowthPilot AI helps sellers make data-driven decisions.")
+st.sidebar.markdown("### 🤝 About DisCartT AI")
+st.sidebar.caption("DisCartT AI helps sellers apply 'diskarte' to their inventory management.")
 st.sidebar.caption("Built by jazzypercy")
 st.sidebar.info("📧 Need help? Contact: grantjaspertaneo@gmail.com")
 st.sidebar.markdown("---")
@@ -245,7 +244,11 @@ def process_data(file_obj=None, use_demo=False):
             for req in required:
                 # Look for column name match, otherwise default to index position
                 match = next((col for col in df_raw.columns if req.lower() in col.lower() or col.lower() in req.lower()), None)
-                mapping[req] = match if match else df_raw.columns[required.index(req)]
+                if match:
+                    mapping[req] = match
+                else:
+                    # Fallback to index if within bounds, otherwise None
+                    mapping[req] = df_raw.columns[required.index(req)] if required.index(req) < len(df_raw.columns) else None
             
             # Return cleaned and renamed DataFrame
             return df_raw.rename(columns={v: k for k, v in mapping.items()})[required]
@@ -381,7 +384,7 @@ if st.session_state.get("df_final") is not None:
                 st.error("🙏 Our AI assistant is currently at maximum capacity. Please try again in a moment.")
 else:
     # 3. LANDING PAGE
-    st.title("🚀 Growth Pilot Ai")
+    st.title("🛒 DisCartT Ai")
     st.subheader("Your AI-powered assistant for smarter inventory and faster sales.")
 
     c1, c2, c3 = st.columns(3)
