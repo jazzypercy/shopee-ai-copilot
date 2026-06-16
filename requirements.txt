@@ -6,4 +6,3 @@ google-cloud-firestore
 google-auth
 authlib>=1.3.2
 itsdangerous
-fpdf2
