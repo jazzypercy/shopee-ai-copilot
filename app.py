@@ -31,22 +31,24 @@ def get_db():
 db = get_db()
 
 # --- 2. GOOGLE OAUTH & SUBSCRIPTION GATE ---
+# 1. Handle login button - this initiates the handshake
 if not st.user:
     st.title("Welcome to GrowthPilot AI")
     st.write("Please sign in to access your dashboard.")
-    if st.button("🚀 Sign in with Google"):
+    if st.button("🚀 Sign in with Google", type="primary"):
         st.login()
     st.stop()
 
-# Safely extract email
+# 2. After the redirect, check if identity is actually available
 user_email = getattr(st.user, "email", None)
+
 if not user_email:
-    st.warning("Authenticating...")
+    st.warning("Finalizing authentication...")
     st.stop()
 
+# 3. NOW it is safe to handle the "First Time User" registration
 ADMIN_EMAIL = "grantjaspertaneo@gmail.com"
 
-# Initialize Session Data
 if "user_tier" not in st.session_state:
     if db:
         user_doc_ref = db.collection("users").document(user_email)
@@ -55,11 +57,10 @@ if "user_tier" not in st.session_state:
         if doc.exists:
             data = doc.to_dict()
             st.session_state.user_tier = data.get("tier", "trial")
-            # Load trial start time if it exists
             if "start_time" in data:
                 st.session_state.trial_start_time = datetime.datetime.fromisoformat(data["start_time"])
         else:
-            # First time user: Create record in Firestore
+            # First time user: Register them
             st.session_state.user_tier = "trial"
             st.session_state.trial_start_time = datetime.datetime.now()
             user_doc_ref.set({
