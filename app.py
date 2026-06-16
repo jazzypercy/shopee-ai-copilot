@@ -79,21 +79,17 @@ if "LOW_STOCK_THRESHOLD" not in st.session_state: st.session_state.LOW_STOCK_THR
 if "demo_mode" not in st.session_state: st.session_state.demo_mode = False
 
 # --- 3. GOOGLE OAUTH & TRIAL GATE ---
-# Check if user is already logged in
-if "user_logged_in" not in st.session_state:
-    st.session_state.user_logged_in = False
+# Check if the user is authenticated via Google.
+# If st.user is None, the user isn't logged in.
+if not st.user:
+    st.title("Welcome to GrowthPilot AI")
+    st.write("Please sign in to access your dashboard.")
+    st.login()
+    st.stop()  # Stops the script execution until the user completes the login
 
-if not st.session_state.user_logged_in:
-    # Attempt to get user info if they just returned from Google
-    if st.user:
-        st.session_state.user_logged_in = True
-        st.session_state.user_email = st.user.email
-        st.rerun() # Refresh to move past the login screen
-    else:
-        st.title("Welcome to GrowthPilot AI")
-        st.login()
-        st.stop()
-
+# If the code reaches here, st.user is guaranteed to be available.
+user_email = st.user.email
+ADMIN_EMAIL = "grantjaspertaneo@gmail.com"
 # If we reached here, the user IS logged in
 user_email = st.session_state.user_email
 ADMIN_EMAIL = "grantjaspertaneo@gmail.com"
