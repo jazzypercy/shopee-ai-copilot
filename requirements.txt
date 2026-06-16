@@ -4,4 +4,5 @@ curl_cffi
 google-genai
 google-cloud-firestore
 google-auth
-authlib
+authlib>=1.3.2
+itsdangerous
