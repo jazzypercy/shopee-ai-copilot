@@ -93,8 +93,6 @@ ADMIN_EMAIL = "grantjaspertaneo@gmail.com"
 # --- 4. CONTROL PANEL & AUTH UI ---
 st.sidebar.header("🛡️ System Control Panel")
 
-st.sidebar.markdown("---")
-
 # Sidebar Timer: Only shows for trial users, not admin
 # NOTE: We use 'user_email' instead of 'st.session_state.get("user_email")'
 if user_email != ADMIN_EMAIL and st.session_state.trial_active:
@@ -111,7 +109,7 @@ if user_email != ADMIN_EMAIL and st.session_state.trial_active:
             st.session_state.trial_active = False
             st.rerun()
 
-uploaded_file = st.sidebar.file_uploader("Upload Product Performance CSV", type=["csv"])
+uploaded_file = st.sidebar.file_uploader("Please upload your CSV file here.", type=["csv"])
 
 @st.cache_data
 def get_sample_csv_template():
@@ -136,18 +134,19 @@ st.session_state.brand_tone = st.sidebar.selectbox(
 )
 # --- FOOTER IN SIDEBAR ---
 st.sidebar.markdown("---")
-st.sidebar.markdown("### 🤝 About GrowthPilot")
-st.sidebar.caption("GrowthPilot AI helps sellers make data-driven decisions.")
-st.sidebar.caption("Built by jazzypercy")
-st.sidebar.info("📧 Need help? Contact: grantjaspertaneo@gmail.com")
-st.sidebar.markdown("---")
 with st.sidebar.container(border=True):
     st.caption("Logged in as:")
     st.write(f"**{user_email}**")
     if st.button("🚪 Logout"):
         st.logout()  # Clears session and forces re-login
         st.rerun()
-
+        
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 🤝 About GrowthPilot")
+st.sidebar.caption("GrowthPilot AI helps sellers make data-driven decisions.")
+st.sidebar.caption("Built by jazzypercy")
+st.sidebar.info("📧 Need help? Contact: grantjaspertaneo@gmail.com")
+st.sidebar.markdown("---")
 st.sidebar.caption("v1.0.0 | GrowthPilot AI © 2026")
 
 
