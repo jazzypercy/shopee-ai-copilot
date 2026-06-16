@@ -79,26 +79,33 @@ if "LOW_STOCK_THRESHOLD" not in st.session_state: st.session_state.LOW_STOCK_THR
 if "demo_mode" not in st.session_state: st.session_state.demo_mode = False
 
 # --- 3. GOOGLE OAUTH & TRIAL GATE ---
-# Check if the user is authenticated via Google.
-# If st.user is None, the user isn't logged in.
+# Check if user is logged in using Streamlit's native auth
 if not st.user:
     st.title("Welcome to GrowthPilot AI")
     st.write("Please sign in to access your dashboard.")
     st.login()
-    st.stop()  # Stops the script execution until the user completes the login
+    st.stop()  # Script pauses here until login completes
 
-# If the code reaches here, st.user is guaranteed to be available.
+# If we get here, user is logged in. Use st.user.email directly.
 user_email = st.user.email
 ADMIN_EMAIL = "grantjaspertaneo@gmail.com"
-# If we reached here, the user IS logged in
-user_email = st.session_state.user_email
-ADMIN_EMAIL = "grantjaspertaneo@gmail.com"
 
-# --- 4. CONTROL PANEL ---
+# --- 4. CONTROL PANEL & AUTH UI ---
 st.sidebar.header("🛡️ System Control Panel")
 
+# Account Info Box at the top of the sidebar
+with st.sidebar.container(border=True):
+    st.caption("Logged in as:")
+    st.write(f"**{user_email}**")
+    if st.button("🚪 Logout"):
+        st.logout() # Built-in Streamlit function to clear session
+        st.rerun()  # Forces the app to clear and show the login screen
+
+st.sidebar.markdown("---")
+
 # Sidebar Timer: Only shows for trial users, not admin
-if st.session_state.get("user_email") != ADMIN_EMAIL and st.session_state.trial_active:
+# NOTE: We use 'user_email' instead of 'st.session_state.get("user_email")'
+if user_email != ADMIN_EMAIL and st.session_state.trial_active:
     if "trial_start_time" in st.session_state:
         elapsed = datetime.datetime.now() - st.session_state.trial_start_time
         remaining = datetime.timedelta(hours=24) - elapsed
@@ -135,18 +142,12 @@ st.session_state.brand_tone = st.sidebar.selectbox(
     "Select your brand voice:",
     ["Professional", "Energetic", "Casual", "Urgent/Sales-y"]
 )
-
 # --- FOOTER IN SIDEBAR ---
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🤝 About GrowthPilot")
 st.sidebar.caption("GrowthPilot AI helps sellers make data-driven decisions.")
 st.sidebar.caption("Built by jazzypercy")
 st.sidebar.info("📧 Need help? Contact: grantjaspertaneo@gmail.com")
-
-st.sidebar.markdown("---")
-st.sidebar.markdown("### 🤝 About GrowthPilot")
-st.sidebar.caption("GrowthPilot AI helps sellers make data-driven decisions.")
-st.sidebar.info("📧 Need help? [Contact Support](mailto:grantjaspertaneo@gmail.com)")
 st.sidebar.markdown("---")
 st.sidebar.caption("v1.0.0 | GrowthPilot AI © 2026")
 
