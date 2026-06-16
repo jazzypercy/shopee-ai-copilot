@@ -8,7 +8,6 @@ import altair as alt
 from google import genai
 from google.cloud import firestore
 from google.oauth2 import service_account
-import streamlit as st
 
 # Initialize session state variables
 if "demo_mode" not in st.session_state:
@@ -18,7 +17,7 @@ if "df_final" not in st.session_state:
     
 if "ai_usage_count" not in st.session_state:
     st.session_state.ai_usage_count = 0
-AI_DAILY_LIMIT = 3 # Set your chosen limit here
+AI_DAILY_LIMIT = 3 
 
 @st.cache_resource
 def get_db():
@@ -35,8 +34,6 @@ db = get_db()
 # --- 1. PERSISTENT DATA HELPERS ---
 def save_user_feedback(email, feedback_score):
     if db:
-        # We store feedback in a collection called "feedback"
-        # We use the email + current timestamp as a document ID to keep them unique
         timestamp = datetime.datetime.now().isoformat()
         doc_id = f"{email}_{timestamp}"
         db.collection("feedback").document(doc_id).set({
@@ -78,36 +75,32 @@ if "trial_active" not in st.session_state: st.session_state.trial_active = False
 if "LOW_STOCK_THRESHOLD" not in st.session_state: st.session_state.LOW_STOCK_THRESHOLD = 25
 if "demo_mode" not in st.session_state: st.session_state.demo_mode = False
 
-# --- 3. GOOGLE OAUTH & TRIAL GATE ---
-# Check if user is authenticated via Google's st.user
+# --- 3. GOOGLE OAUTH GATE ---
+# The Gatekeeper: Nothing below this block executes until the user is logged in.
 if not st.user:
     st.title("Welcome to GrowthPilot AI")
     st.write("Please sign in to access your dashboard.")
     st.login()
-    st.stop()  # Stop script here until login is complete
+    st.stop()  # Script stops execution here until login is complete
 
-# Now that we know st.user exists, it is safe to access its attributes
+# Now that we know st.user exists, define these globally for the session
 user_email = st.user.email
 ADMIN_EMAIL = "grantjaspertaneo@gmail.com"
 
-# --- 4. CONTROL PANEL & AUTH UI ---
+# --- 4. CONTROL PANEL ---
 st.sidebar.header("🛡️ System Control Panel")
 
-# Sidebar Timer: Only shows for trial users, not admin
-# NOTE: We use 'user_email' instead of 'st.session_state.get("user_email")'
 if user_email != ADMIN_EMAIL and st.session_state.trial_active:
     if "trial_start_time" in st.session_state:
         elapsed = datetime.datetime.now() - st.session_state.trial_start_time
         remaining = datetime.timedelta(hours=24) - elapsed
-        
         if remaining.total_seconds() > 0:
-            hours, remainder = divmod(int(remaining.total_seconds()), 3600)
-            minutes, _ = divmod(remainder, 60)
-            st.sidebar.info(f"⏳ Trial ends in: **{hours}h {minutes}m**")
+            h, r = divmod(int(remaining.total_seconds()), 3600)
+            m, _ = divmod(r, 60)
+            st.sidebar.info(f"⏳ Trial ends in: **{h}h {m}m**")
         else:
             st.sidebar.error("Trial expired.")
             st.session_state.trial_active = False
-            st.rerun()
 
 uploaded_file = st.sidebar.file_uploader("Please upload your CSV file here.", type=["csv"])
 
@@ -127,18 +120,17 @@ run_analysis = st.sidebar.button("Analyze My Store", type="primary", use_contain
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("🎨 AI Brand Tone")
-# We store this in session_state so it persists across interactions
 st.session_state.brand_tone = st.sidebar.selectbox(
     "Select your brand voice:",
     ["Professional", "Energetic", "Casual", "Urgent/Sales-y"]
 )
-# --- FOOTER IN SIDEBAR ---
+
 st.sidebar.markdown("---")
 with st.sidebar.container(border=True):
-    st.caption("Logged in as:")
+    st.caption("Account:")
     st.write(f"**{user_email}**")
     if st.button("🚪 Logout"):
-        st.logout()  # Clears session and forces re-login
+        st.logout()
         st.rerun()
         
 st.sidebar.markdown("---")
@@ -148,7 +140,6 @@ st.sidebar.caption("Built by jazzypercy")
 st.sidebar.info("📧 Need help? Contact: grantjaspertaneo@gmail.com")
 st.sidebar.markdown("---")
 st.sidebar.caption("v1.0.0 | GrowthPilot AI © 2026")
-
 
 # --- 5 & 6. UNIFIED UI & RUNTIME LOGIC ---
 # 1. CENTRAL DATA PROCESSING ENGINE
