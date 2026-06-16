@@ -79,14 +79,14 @@ if "LOW_STOCK_THRESHOLD" not in st.session_state: st.session_state.LOW_STOCK_THR
 if "demo_mode" not in st.session_state: st.session_state.demo_mode = False
 
 # --- 3. GOOGLE OAUTH & TRIAL GATE ---
-# Check if user is logged in using Streamlit's native auth
+# Check if user is authenticated via Google's st.user
 if not st.user:
     st.title("Welcome to GrowthPilot AI")
     st.write("Please sign in to access your dashboard.")
     st.login()
-    st.stop()  # Script pauses here until login completes
+    st.stop()  # Stop script here until login is complete
 
-# If we get here, user is logged in. Use st.user.email directly.
+# Now that we know st.user exists, it is safe to access its attributes
 user_email = st.user.email
 ADMIN_EMAIL = "grantjaspertaneo@gmail.com"
 
