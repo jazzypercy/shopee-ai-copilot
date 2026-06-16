@@ -103,7 +103,7 @@ if user_email != ADMIN_EMAIL:
                 start = start.replace(tzinfo=None)
             
             elapsed = now - start
-            remaining = datetime.timedelta(hours=24) - elapsed
+            remaining = datetime.timedelta(days=3) - elapsed
             
             if remaining.total_seconds() > 0:
                 h, r = divmod(int(remaining.total_seconds()), 3600)
