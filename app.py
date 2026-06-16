@@ -9,14 +9,14 @@ from google import genai
 from google.cloud import firestore
 from google.oauth2 import service_account
 
-# Initialize session state variables
-if "demo_mode" not in st.session_state:
-    st.session_state.demo_mode = False
-if "df_final" not in st.session_state:
-    st.session_state.df_final = None
-    
-if "ai_usage_count" not in st.session_state:
-    st.session_state.ai_usage_count = 0
+# --- 1. SESSION STATE & CONFIG ---
+st.set_page_config(page_title="GrowthPilot AI", layout="wide", page_icon="🛍️")
+
+if "demo_mode" not in st.session_state: st.session_state.demo_mode = False
+if "df_final" not in st.session_state: st.session_state.df_final = None
+if "ai_usage_count" not in st.session_state: st.session_state.ai_usage_count = 0
+if "trial_active" not in st.session_state: st.session_state.trial_active = False
+if "LOW_STOCK_THRESHOLD" not in st.session_state: st.session_state.LOW_STOCK_THRESHOLD = 25
 AI_DAILY_LIMIT = 3 
 
 @st.cache_resource
@@ -26,38 +26,35 @@ def get_db():
         creds = service_account.Credentials.from_service_account_info(key_dict)
         return firestore.Client(credentials=creds, database="growthai")
     except Exception as e:
-        st.error(f"Firestore Auth Failed: {e}")
         return None
 
 db = get_db()
 
-# --- 1. PERSISTENT DATA HELPERS ---
-def save_user_feedback(email, feedback_score):
+# --- 2. GOOGLE OAUTH & SUBSCRIPTION GATE ---
+# The Gatekeeper: Nothing below this block executes until the user is logged in.
+if not st.user:
+    st.title("Welcome to GrowthPilot AI")
+    st.write("Please sign in to access your dashboard.")
+    st.login()
+    st.stop()  # STOPS script execution here until login completes
+
+# Safely extract email
+user_email = getattr(st.user, "email", None)
+if not user_email:
+    st.warning("Authenticating...")
+    st.stop()
+
+ADMIN_EMAIL = "grantjaspertaneo@gmail.com"
+
+# Fetch user tier from Firestore for future Stripe/Subscription support
+if "user_tier" not in st.session_state:
     if db:
-        timestamp = datetime.datetime.now().isoformat()
-        doc_id = f"{email}_{timestamp}"
-        db.collection("feedback").document(doc_id).set({
-            "email": email,
-            "score": feedback_score,
-            "timestamp": timestamp
-        })
-        
-def save_user_trial(email, start_time):
-    if db:
-        db.collection("users").document(email).set({"start_time": start_time.isoformat()})
+        doc = db.collection("users").document(user_email).get()
+        st.session_state.user_tier = doc.to_dict().get("tier", "trial") if doc.exists else "trial"
+    else:
+        st.session_state.user_tier = "trial"
 
-def get_user_trial(email):
-    if not db: return None
-    try:
-        doc = db.collection("users").document(email).get()
-        return datetime.datetime.fromisoformat(doc.to_dict()["start_time"]) if doc.exists else None
-    except Exception as e:
-        st.warning(f"Database error: {e}")
-        return None
-
-def is_trial_expired(start_time):
-    return (datetime.datetime.now() - start_time) > datetime.timedelta(hours=24)
-
+# --- 3. DATA HELPERS ---
 def get_mock_data(username):
     products = ["Natural Shampoo", "Body Lotion 20X", "Niacinamide Soap", "Brightening Sunscreen"]
     return pd.DataFrame({
@@ -68,40 +65,27 @@ def get_mock_data(username):
         "Rating": [4.8, 4.9, 4.9, 4.7]
     })
 
-# --- 2. CONFIGURATION & STATE ---
-st.set_page_config(page_title="GrowthPilot AI", layout="wide", page_icon="🛍️")
-
-if "trial_active" not in st.session_state: st.session_state.trial_active = False
-if "LOW_STOCK_THRESHOLD" not in st.session_state: st.session_state.LOW_STOCK_THRESHOLD = 25
-if "demo_mode" not in st.session_state: st.session_state.demo_mode = False
-
-# --- 3. GOOGLE OAUTH GATE ---
-# The Gatekeeper: Nothing below this block executes until the user is logged in.
-if not st.user:
-    st.title("Welcome to GrowthPilot AI")
-    st.write("Please sign in to access your dashboard.")
-    st.login()
-    st.stop()  # Script stops execution here until login is complete
-
-# Now that we know st.user exists, define these globally for the session
-user_email = st.user.email
-ADMIN_EMAIL = "grantjaspertaneo@gmail.com"
-
 # --- 4. CONTROL PANEL ---
 st.sidebar.header("🛡️ System Control Panel")
 
-if user_email != ADMIN_EMAIL and st.session_state.trial_active:
-    if "trial_start_time" in st.session_state:
-        elapsed = datetime.datetime.now() - st.session_state.trial_start_time
-        remaining = datetime.timedelta(hours=24) - elapsed
-        if remaining.total_seconds() > 0:
-            h, r = divmod(int(remaining.total_seconds()), 3600)
-            m, _ = divmod(r, 60)
-            st.sidebar.info(f"⏳ Trial ends in: **{h}h {m}m**")
-        else:
-            st.sidebar.error("Trial expired.")
-            st.session_state.trial_active = False
+# A. Trial/Subscription Status Display
+# We use the 'user_tier' variable initialized in Section 3
+if user_email != ADMIN_EMAIL:
+    if st.session_state.user_tier == "trial":
+        if "trial_start_time" in st.session_state:
+            elapsed = datetime.datetime.now() - st.session_state.trial_start_time
+            remaining = datetime.timedelta(hours=24) - elapsed
+            if remaining.total_seconds() > 0:
+                h, r = divmod(int(remaining.total_seconds()), 3600)
+                m, _ = divmod(r, 60)
+                st.sidebar.info(f"⏳ Trial ends in: **{h}h {m}m**")
+            else:
+                st.sidebar.error("Trial expired.")
+                st.session_state.trial_active = False
+    else:
+        st.sidebar.success(f"💎 Status: {st.session_state.user_tier.capitalize()} Member")
 
+# B. File Upload & Tools
 uploaded_file = st.sidebar.file_uploader("Please upload your CSV file here.", type=["csv"])
 
 @st.cache_data
@@ -118,6 +102,7 @@ st.sidebar.download_button("📥 Download CSV Template", get_sample_csv_template
 st.session_state.LOW_STOCK_THRESHOLD = st.sidebar.slider("Low Stock Warning Flag", 5, 1000, st.session_state.LOW_STOCK_THRESHOLD)
 run_analysis = st.sidebar.button("Analyze My Store", type="primary", use_container_width=True)
 
+# C. Brand Tone
 st.sidebar.markdown("---")
 st.sidebar.subheader("🎨 AI Brand Tone")
 st.session_state.brand_tone = st.sidebar.selectbox(
@@ -125,10 +110,12 @@ st.session_state.brand_tone = st.sidebar.selectbox(
     ["Professional", "Energetic", "Casual", "Urgent/Sales-y"]
 )
 
+# D. Account Footer (Ready for Stripe/Subscription display)
 st.sidebar.markdown("---")
 with st.sidebar.container(border=True):
     st.caption("Account:")
     st.write(f"**{user_email}**")
+    # You can eventually add a "Upgrade to Pro" button here if tier is 'trial'
     if st.button("🚪 Logout"):
         st.logout()
         st.rerun()
