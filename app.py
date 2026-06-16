@@ -31,12 +31,12 @@ def get_db():
 db = get_db()
 
 # --- 2. GOOGLE OAUTH & SUBSCRIPTION GATE ---
-# The Gatekeeper: Nothing below this block executes until the user is logged in.
 if not st.user:
     st.title("Welcome to GrowthPilot AI")
     st.write("Please sign in to access your dashboard.")
-    st.login()
-    st.stop()  # STOPS script execution here until login completes
+    if st.button("🚀 Sign in with Google"):
+        st.login()
+    st.stop()
 
 # Safely extract email
 user_email = getattr(st.user, "email", None)
@@ -46,11 +46,27 @@ if not user_email:
 
 ADMIN_EMAIL = "grantjaspertaneo@gmail.com"
 
-# Fetch user tier from Firestore for future Stripe/Subscription support
+# Initialize Session Data
 if "user_tier" not in st.session_state:
     if db:
-        doc = db.collection("users").document(user_email).get()
-        st.session_state.user_tier = doc.to_dict().get("tier", "trial") if doc.exists else "trial"
+        user_doc_ref = db.collection("users").document(user_email)
+        doc = user_doc_ref.get()
+        
+        if doc.exists:
+            data = doc.to_dict()
+            st.session_state.user_tier = data.get("tier", "trial")
+            # Load trial start time if it exists
+            if "start_time" in data:
+                st.session_state.trial_start_time = datetime.datetime.fromisoformat(data["start_time"])
+        else:
+            # First time user: Create record in Firestore
+            st.session_state.user_tier = "trial"
+            st.session_state.trial_start_time = datetime.datetime.now()
+            user_doc_ref.set({
+                "email": user_email,
+                "tier": "trial",
+                "start_time": st.session_state.trial_start_time.isoformat()
+            })
     else:
         st.session_state.user_tier = "trial"
 
@@ -72,6 +88,7 @@ st.sidebar.header("🛡️ System Control Panel")
 # We use the 'user_tier' variable initialized in Section 3
 if user_email != ADMIN_EMAIL:
     if st.session_state.user_tier == "trial":
+        # RESTORED: Trial Timer Logic
         if "trial_start_time" in st.session_state:
             elapsed = datetime.datetime.now() - st.session_state.trial_start_time
             remaining = datetime.timedelta(hours=24) - elapsed
@@ -110,12 +127,11 @@ st.session_state.brand_tone = st.sidebar.selectbox(
     ["Professional", "Energetic", "Casual", "Urgent/Sales-y"]
 )
 
-# D. Account Footer (Ready for Stripe/Subscription display)
+# D. Account Footer
 st.sidebar.markdown("---")
 with st.sidebar.container(border=True):
     st.caption("Account:")
     st.write(f"**{user_email}**")
-    # You can eventually add a "Upgrade to Pro" button here if tier is 'trial'
     if st.button("🚪 Logout"):
         st.logout()
         st.rerun()
