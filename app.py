@@ -31,19 +31,23 @@ def get_db():
 db = get_db()
 
 # --- 2. GOOGLE OAUTH & SUBSCRIPTION GATE ---
-# 1. Handle login button - this initiates the handshake
-if not st.user:
+if not st.user.is_logged_in:
     st.title("Welcome to GrowthPilot AI")
     st.write("Please sign in to access your dashboard.")
-    if st.button("🚀 Sign in with Google", type="primary"):
-        st.login()
+    
+    # Use on_click with the provider name "google" (matching your [auth.google] secret)
+    st.button("🚀 Sign in with Google", on_click=st.login, args=("google",), type="primary")
     st.stop()
 
-# 2. After the redirect, check if identity is actually available
-user_email = getattr(st.user, "email", None)
+# Safely extract email using the dict method
+user_info = st.user.to_dict()
+user_email = user_info.get("email")
 
 if not user_email:
-    st.warning("Finalizing authentication...")
+    st.error("Authentication successful, but email could not be retrieved.")
+    if st.button("Logout and Try Again"):
+        st.logout()
+        st.rerun()
     st.stop()
 
 # 3. NOW it is safe to handle the "First Time User" registration
@@ -85,14 +89,22 @@ def get_mock_data(username):
 # --- 4. CONTROL PANEL ---
 st.sidebar.header("🛡️ System Control Panel")
 
-# A. Trial/Subscription Status Display
-# We use the 'user_tier' variable initialized in Section 3
+# A. Trial/Subscription Status Display ---
 if user_email != ADMIN_EMAIL:
+    # Check if the user is in trial mode
     if st.session_state.user_tier == "trial":
-        # RESTORED: Trial Timer Logic
         if "trial_start_time" in st.session_state:
-            elapsed = datetime.datetime.now() - st.session_state.trial_start_time
+            # FIX: Ensure both 'now' and 'start' are timezone-naive to avoid subtraction errors
+            now = datetime.datetime.now()
+            start = st.session_state.trial_start_time
+            
+            # If the start_time is timezone-aware, we strip it; otherwise, we leave it
+            if start.tzinfo is not None:
+                start = start.replace(tzinfo=None)
+            
+            elapsed = now - start
             remaining = datetime.timedelta(hours=24) - elapsed
+            
             if remaining.total_seconds() > 0:
                 h, r = divmod(int(remaining.total_seconds()), 3600)
                 m, _ = divmod(r, 60)
@@ -100,7 +112,9 @@ if user_email != ADMIN_EMAIL:
             else:
                 st.sidebar.error("Trial expired.")
                 st.session_state.trial_active = False
+                # Optional: You can update the database tier to 'expired' here
     else:
+        # User is not a trial user
         st.sidebar.success(f"💎 Status: {st.session_state.user_tier.capitalize()} Member")
 
 # B. File Upload & Tools
