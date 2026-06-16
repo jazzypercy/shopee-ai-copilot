@@ -93,14 +93,6 @@ ADMIN_EMAIL = "grantjaspertaneo@gmail.com"
 # --- 4. CONTROL PANEL & AUTH UI ---
 st.sidebar.header("🛡️ System Control Panel")
 
-# Account Info Box at the top of the sidebar
-with st.sidebar.container(border=True):
-    st.caption("Logged in as:")
-    st.write(f"**{user_email}**")
-    if st.button("🚪 Logout"):
-        st.logout() # Built-in Streamlit function to clear session
-        st.rerun()  # Forces the app to clear and show the login screen
-
 st.sidebar.markdown("---")
 
 # Sidebar Timer: Only shows for trial users, not admin
@@ -149,6 +141,13 @@ st.sidebar.caption("GrowthPilot AI helps sellers make data-driven decisions.")
 st.sidebar.caption("Built by jazzypercy")
 st.sidebar.info("📧 Need help? Contact: grantjaspertaneo@gmail.com")
 st.sidebar.markdown("---")
+with st.sidebar.container(border=True):
+    st.caption("Logged in as:")
+    st.write(f"**{user_email}**")
+    if st.button("🚪 Logout"):
+        st.logout()  # Clears session and forces re-login
+        st.rerun()
+
 st.sidebar.caption("v1.0.0 | GrowthPilot AI © 2026")
 
 
