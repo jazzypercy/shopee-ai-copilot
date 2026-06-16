@@ -346,22 +346,22 @@ if st.session_state.get("df_final") is not None:
     
     if not check_feature_access("ai_insights", user_email):
         st.warning("✨ **You've reached your limit!** Please upgrade to continue generating insights.")
-        show_pricing_table() # This calls your new pricing table
-    else:
-        # --- AI GENERATOR ---
-    st.markdown("### 🧠 AI Content Generator")
-    selected_name = st.selectbox("Select product:", df['Product Name'].tolist())
-    target_prod = df[df['Product Name'] == selected_name].iloc[0]
-    
-    if not check_feature_access("ai_insights", user_email):
-        st.warning("✨ **You've reached your limit!** Please upgrade to continue generating insights.")
-        show_pricing_table() 
+        show_pricing_table()
     else:
         if st.button("Generate AI Insights"):
             try:
                 client = genai.Client(api_key=st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", "")))
                 with st.spinner('Generating...'):
-                    response = client.models.generate_content(model="gemini-2.0-flash", contents=f"Analyze {target_prod['Product Name']}. Tone: {st.session_state.brand_tone}.")
+                    prompt = f"""
+                    Analyze the following product data for {target_prod['Product Name']}. 
+                    Tone: {st.session_state.brand_tone}.
+                    Provide a detailed analysis covering: 
+                    1. Sales performance relative to current stock.
+                    2. Specific reordering advice.
+                    3. A creative social media caption based on the product's ratings.
+                    Do not summarize too briefly; provide actionable business intelligence.
+                    """
+                    response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
                 
                 # 1. Update local state
                 st.session_state.ai_usage_count += 1
@@ -372,8 +372,8 @@ if st.session_state.get("df_final") is not None:
                 })
                 
                 st.markdown(response.text)
-            except Exception:
-                st.error("🙏 Our AI assistant is currently at maximum capacity.")
+            except Exception as e:
+                st.error(f"🙏 Our AI assistant is currently at maximum capacity. Error: {e}")
 else:
     # 3. LANDING PAGE
     st.title("🚀 Growth Pilot Ai")
