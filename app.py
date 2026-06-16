@@ -79,37 +79,24 @@ if "LOW_STOCK_THRESHOLD" not in st.session_state: st.session_state.LOW_STOCK_THR
 if "demo_mode" not in st.session_state: st.session_state.demo_mode = False
 
 # --- 3. GOOGLE OAUTH & TRIAL GATE ---
-if not st.session_state.get("user_logged_in", False):
-    st.title("Welcome to GrowthPilot AI")
-    st.write("Please sign in to access your dashboard.")
-    st.login()
-    st.stop()
+# Check if user is already logged in
+if "user_logged_in" not in st.session_state:
+    st.session_state.user_logged_in = False
 
-# Once logged in, capture user identity
-user_email = st.user.email
-st.session_state.user_email = user_email
-st.session_state.user_logged_in = True
+if not st.session_state.user_logged_in:
+    # Attempt to get user info if they just returned from Google
+    if st.user:
+        st.session_state.user_logged_in = True
+        st.session_state.user_email = st.user.email
+        st.rerun() # Refresh to move past the login screen
+    else:
+        st.title("Welcome to GrowthPilot AI")
+        st.login()
+        st.stop()
 
+# If we reached here, the user IS logged in
+user_email = st.session_state.user_email
 ADMIN_EMAIL = "grantjaspertaneo@gmail.com"
-
-# Admin has full access, others go through trial logic
-if user_email == ADMIN_EMAIL:
-    st.session_state.trial_active = True
-else:
-    # Existing Trial Logic
-    if not st.session_state.trial_active:
-        existing_start = get_user_trial(user_email)
-        if existing_start:
-            if is_trial_expired(existing_start):
-                st.error("❌ Your 24-hour trial period has ended.")
-                st.stop()
-            st.session_state.trial_start_time = existing_start
-        else:
-            st.session_state.trial_start_time = datetime.datetime.now()
-            save_user_trial(user_email, st.session_state.trial_start_time)
-            
-        st.session_state.trial_active = True
-        st.rerun()
 
 # --- 4. CONTROL PANEL ---
 st.sidebar.header("🛡️ System Control Panel")
