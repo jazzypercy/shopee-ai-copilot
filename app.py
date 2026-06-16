@@ -12,12 +12,15 @@ from google.oauth2 import service_account
 # --- 1. SESSION STATE & CONFIG ---
 st.set_page_config(page_title="GrowthPilot AI", layout="wide", page_icon="🛍️")
 
+# Global Settings
+ADMIN_EMAIL = "grantjaspertaneo@gmail.com"
+AI_DAILY_LIMIT = 3 
+
 if "demo_mode" not in st.session_state: st.session_state.demo_mode = False
 if "df_final" not in st.session_state: st.session_state.df_final = None
 if "ai_usage_count" not in st.session_state: st.session_state.ai_usage_count = 0
 if "trial_active" not in st.session_state: st.session_state.trial_active = False
 if "LOW_STOCK_THRESHOLD" not in st.session_state: st.session_state.LOW_STOCK_THRESHOLD = 25
-AI_DAILY_LIMIT = 3 
 
 @st.cache_resource
 def get_db():
@@ -30,13 +33,58 @@ def get_db():
 
 db = get_db()
 
+def get_user_access(email):
+    """Returns the user's current tier."""
+    if email == ADMIN_EMAIL:
+        return "premium"
+    return st.session_state.get("user_tier", "trial")
+
+def check_feature_access(feature_name, email):
+    """Returns True if the user has access to the requested feature."""
+    tier = get_user_access(email)
+    
+    if feature_name == "ai_insights":
+        if tier == "premium": return True
+        if tier == "starter" and st.session_state.ai_usage_count < 30: return True
+        if tier == "trial" and st.session_state.ai_usage_count < 3: return True
+    
+    if feature_name == "advanced_forecasting":
+        return tier == "premium"
+        
+    return False
+
+def show_pricing_table():
+    st.markdown("### 💎 Unlock Full Potential")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("Starter")
+        st.write("₱499 / mo")
+        st.markdown("- 30 AI Insights/mo\n- 7-Day Forecast")
+        st.link_button("Upgrade to Starter", "YOUR_STRIPE_STARTER_LINK_HERE")
+        
+    with col2:
+        st.subheader("Premium")
+        st.write("₱699 / mo")
+        st.markdown("- Unlimited AI Insights\n- 30-Day Forecast")
+        st.link_button("Upgrade to Premium", "YOUR_STRIPE_PREMIUM_LINK_HERE")
+    
 # --- 2. GOOGLE OAUTH & SUBSCRIPTION GATE ---
 if not st.user.is_logged_in:
-    st.title("Welcome to GrowthPilot AI")
-    st.write("Please sign in to access your dashboard.")
+    # --- MARKETING LANDING PAGE ---
+    st.title("🛍️ Welcome to GrowthPilot AI")
+    st.markdown("### Take the guesswork out of your Shopee business.")
+    st.write("GrowthPilot uses AI to forecast demand, prevent stockouts, and boost your sales.")
     
-    # Use on_click with the provider name "google" (matching your [auth.google] secret)
-    st.button("🚀 Sign in with Google", on_click=st.login, args=("google",), type="primary")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.info("✅ **Forecast Sales**")
+        st.info("✅ **Prevent Stockouts**")
+    with col2:
+        st.info("✅ **AI Content Generation**")
+        st.info("✅ **Inventory Insights**")
+        
+    st.button("🚀 Sign in with Google to Start 3-Day Trial", on_click=st.login, args=("google",), type="primary")
     st.stop()
 
 # Safely extract email using the dict method
@@ -50,31 +98,32 @@ if not user_email:
         st.rerun()
     st.stop()
 
-# 3. NOW it is safe to handle the "First Time User" registration
-ADMIN_EMAIL = "grantjaspertaneo@gmail.com"
-
-if "user_tier" not in st.session_state:
-    if db:
-        user_doc_ref = db.collection("users").document(user_email)
-        doc = user_doc_ref.get()
+# --- 3. SYNC USER TIER FROM FIRESTORE ---
+# --- 3. SYNC USER TIER & USAGE FROM FIRESTORE ---
+if db:
+    user_doc_ref = db.collection("users").document(user_email)
+    doc = user_doc_ref.get()
+    
+    if doc.exists:
+        data = doc.to_dict()
+        # Load from Firestore instead of defaulting to 0
+        st.session_state.user_tier = data.get("tier", "trial")
+        st.session_state.ai_usage_count = data.get("ai_usage_count", 0) 
         
-        if doc.exists:
-            data = doc.to_dict()
-            st.session_state.user_tier = data.get("tier", "trial")
-            if "start_time" in data:
-                st.session_state.trial_start_time = datetime.datetime.fromisoformat(data["start_time"])
-        else:
-            # First time user: Register them
-            st.session_state.user_tier = "trial"
-            st.session_state.trial_start_time = datetime.datetime.now()
-            user_doc_ref.set({
-                "email": user_email,
-                "tier": "trial",
-                "start_time": st.session_state.trial_start_time.isoformat()
-            })
+        if "start_time" in data:
+            st.session_state.trial_start_time = datetime.datetime.fromisoformat(data["start_time"])
     else:
+        # First time user: Initialize with 0
         st.session_state.user_tier = "trial"
-
+        st.session_state.ai_usage_count = 0
+        st.session_state.trial_start_time = datetime.datetime.now()
+        user_doc_ref.set({
+            "email": user_email,
+            "tier": "trial",
+            "ai_usage_count": 0,
+            "start_time": st.session_state.trial_start_time.isoformat()
+        })
+        
 # --- 3. DATA HELPERS ---
 def get_mock_data(username):
     products = ["Natural Shampoo", "Body Lotion 20X", "Niacinamide Soap", "Brightening Sunscreen"]
@@ -158,6 +207,22 @@ st.sidebar.caption("Built by jazzypercy")
 st.sidebar.info("📧 Need help? Contact: grantjaspertaneo@gmail.com")
 st.sidebar.markdown("---")
 st.sidebar.caption("v1.0.0 | GrowthPilot AI © 2026")
+
+# --- ADMIN ONLY: USER PROMOTION TOOL ---
+if user_email == ADMIN_EMAIL:
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("🛠️ Admin: Manage Tiers")
+    target_email = st.sidebar.text_input("Enter user email to promote:")
+    new_tier = st.sidebar.selectbox("Select new tier:", ["trial", "starter", "premium"])
+    
+    if st.sidebar.button("Update User Tier"):
+        try:
+            user_doc_ref = db.collection("users").document(target_email)
+            user_doc_ref.update({"tier": new_tier})
+            st.sidebar.success(f"User {target_email} updated to {new_tier}!")
+            st.rerun() # Forces a refresh so the app fetches the new data
+        except Exception as e:
+            st.sidebar.error(f"Error: {e}")
 
 # --- 5 & 6. UNIFIED UI & RUNTIME LOGIC ---
 # 1. CENTRAL DATA PROCESSING ENGINE
@@ -273,21 +338,39 @@ if st.session_state.get("df_final") is not None:
     if not df[df['Current Stock'] <= st.session_state.LOW_STOCK_THRESHOLD].empty:
         for _, row in df[df['Current Stock'] <= st.session_state.LOW_STOCK_THRESHOLD].iterrows():
             st.warning(f"⚠️ Reorder: '{row['Product Name']}' has only **{row['Current Stock']}** left.")
-
+    
     # --- AI GENERATOR ---
     st.markdown("### 🧠 AI Content Generator")
     selected_name = st.selectbox("Select product:", df['Product Name'].tolist())
     target_prod = df[df['Product Name'] == selected_name].iloc[0]
     
-    if st.button("Generate AI Insights"):
-        if st.session_state.ai_usage_count >= AI_DAILY_LIMIT:
-            st.warning("✨ **Daily Limit Reached**")
-        else:
+    if not check_feature_access("ai_insights", user_email):
+        st.warning("✨ **You've reached your limit!** Please upgrade to continue generating insights.")
+        show_pricing_table() # This calls your new pricing table
+    else:
+        # --- AI GENERATOR ---
+    st.markdown("### 🧠 AI Content Generator")
+    selected_name = st.selectbox("Select product:", df['Product Name'].tolist())
+    target_prod = df[df['Product Name'] == selected_name].iloc[0]
+    
+    if not check_feature_access("ai_insights", user_email):
+        st.warning("✨ **You've reached your limit!** Please upgrade to continue generating insights.")
+        show_pricing_table() 
+    else:
+        if st.button("Generate AI Insights"):
             try:
                 client = genai.Client(api_key=st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", "")))
                 with st.spinner('Generating...'):
                     response = client.models.generate_content(model="gemini-2.0-flash", contents=f"Analyze {target_prod['Product Name']}. Tone: {st.session_state.brand_tone}.")
+                
+                # 1. Update local state
                 st.session_state.ai_usage_count += 1
+                
+                # 2. Update Firestore
+                db.collection("users").document(user_email).update({
+                    "ai_usage_count": st.session_state.ai_usage_count
+                })
+                
                 st.markdown(response.text)
             except Exception:
                 st.error("🙏 Our AI assistant is currently at maximum capacity.")
