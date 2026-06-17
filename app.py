@@ -504,14 +504,14 @@ else:
             """)
         with tab_l:
             st.write("""
-            1. Go to your Lazada Seller Center.
+            1. Go to [sellercenter.lazada.com.ph](https://sellercenter.lazada.com.ph/).
             2. Navigate to **Data Insights** > **Products**.
             3. Adjust your date range (e.g., Last 30 Days).
             4. Click **'Export'** to download your **.CSV** file.
             """)
         with tab_t:
             st.write("""
-            1. Go to your TikTok Seller Center.
+            1. Go to [seller-ph.tiktok.com](https://seller-ph.tiktok.com/).
             2. Navigate to **Data Compass** > **Product Analysis**.
             3. Adjust your date range.
             4. Click **'Export'** to download your **.CSV** file.
