@@ -248,10 +248,11 @@ if user_email == ADMIN_EMAIL:
                 for doc in docs:
                     u_data = doc.to_dict()
                     user_list.append({
-                        "Email": u_data.get("email"),
-                        "Current Tier": u_data.get("tier"),
+                        # Use doc.id (the email used to create the document)
+                        "Email": doc.id, 
+                        "Current Tier": u_data.get("tier", "N/A"),
                         "AI Used": u_data.get("ai_usage_count", 0),
-                        "Joined Date": u_data.get("start_time", "")[:10]
+                        "Joined Date": u_data.get("start_time", "Unknown")[:10]
                     })
                 
                 df_users = pd.DataFrame(user_list)
