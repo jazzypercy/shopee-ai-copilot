@@ -54,37 +54,38 @@ def check_feature_access(feature_name, email):
     return False
 
 def show_pricing_table():
-    st.markdown("### 💎 Unlock Full Potential")
+    st.markdown("### 💎 I-Level Up ang Diskarte (Unlock Full Potential)")
+    st.info("💳 **Secure payments via GCash, Maya, and Credit/Debit Cards coming soon!**")
     col1, col2 = st.columns(2)
     
     with col1:
         st.subheader("Starter")
         st.write("₱499 / mo")
         st.markdown("- 30 AI Insights/mo\n- 7-Day Forecast")
-        st.link_button("Upgrade to Starter", "YOUR_STRIPE_STARTER_LINK_HERE")
+        st.link_button("Upgrade to Starter", "YOUR_PAYMONGO_STARTER_LINK_HERE", use_container_width=True)
         
     with col2:
         st.subheader("Premium")
         st.write("₱699 / mo")
         st.markdown("- Unlimited AI Insights\n- 30-Day Forecast")
-        st.link_button("Upgrade to Premium", "YOUR_STRIPE_PREMIUM_LINK_HERE")
+        st.link_button("Upgrade to Premium", "YOUR_PAYMONGO_PREMIUM_LINK_HERE", type="primary", use_container_width=True)
     
 # --- 2. GOOGLE OAUTH & SUBSCRIPTION GATE ---
 if not st.user.is_logged_in:
     # --- MARKETING LANDING PAGE ---
     st.title("🛒 Welcome to DisCartT AI")
-    st.markdown("### Ang AI assistant para sa matalinong diskarte sa iyong online business!")
-    st.write("DisCartT uses AI to forecast demand, prevent stockouts, and boost your sales.")
+    st.markdown("### Ang AI assistant para sa matalinong diskarte ng mga Pinoy online sellers!")
+    st.write("DisCartT uses AI to forecast demand, prevent stockouts, and boost your sales through live selling strategies and social media campaigns.")
     
     col1, col2 = st.columns(2)
     with col1:
         st.info("✅ **Forecast Sales**")
         st.info("✅ **Prevent Stockouts**")
     with col2:
-        st.info("✅ **AI Content Generation**")
+        st.info("✅ **Marketing Content Generation**")
         st.info("✅ **Inventory Insights**")
         
-    st.button("🚀 Sign in with Google to Start 3-Day Trial", on_click=st.login, args=("google",), type="primary")
+    st.button("🚀 Sign in with Google para masimulan ang iyong 3-Day Trial", on_click=st.login, args=("google",), type="primary")
     st.stop()
 
 # Safely extract email using the dict method
@@ -186,8 +187,8 @@ run_analysis = st.sidebar.button("Analyze My Store", type="primary", use_contain
 st.sidebar.markdown("---")
 st.sidebar.subheader("🎨 AI Brand Tone")
 st.session_state.brand_tone = st.sidebar.selectbox(
-    "Select your brand voice:",
-    ["Professional", "Energetic", "Casual", "Urgent/Sales-y"]
+    "Select your brand tone:",
+    ["Professional", "Energetic", "Casual", "Urgent/Sales-y", "Funny"]
 )
 
 # D. Account Footer
@@ -201,7 +202,7 @@ with st.sidebar.container(border=True):
         
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🤝 About DisCartT AI")
-st.sidebar.caption("DisCartT AI helps sellers apply 'diskarte' to their inventory management.")
+st.sidebar.caption("DisCartT AI helps sellers apply 'diskarte' to their inventory management and online contents.")
 st.sidebar.caption("Built by jazzypercy")
 st.sidebar.info("📧 Need help? Contact: grantjaspertaneo@gmail.com")
 st.sidebar.markdown("---")
@@ -239,16 +240,34 @@ def process_data(file_obj=None, use_demo=False):
             df_raw = pd.read_csv(file_obj)
             required = ["Product Name", "Price (PHP)", "Current Stock", "Monthly Sold", "Rating"]
             
-            # --- SMART MAPPING LOGIC ---
+            # --- SMART MAPPING LOGIC (Supports Shopee, Lazada, TikTok) ---
+            aliases = {
+                "Product Name": ["product name", "item name", "title"],
+                "Price (PHP)": ["price", "retail price", "unit price"],
+                "Current Stock": ["stock", "quantity", "qty", "inventory", "available"],
+                "Monthly Sold": ["sold", "sales", "order", "benta", "30 days"],
+                "Rating": ["rating", "review", "score", "star"]
+            }
+            
             mapping = {}
-            for req in required:
-                # Look for column name match, otherwise default to index position
-                match = next((col for col in df_raw.columns if req.lower() in col.lower() or col.lower() in req.lower()), None)
+            for req, possible_names in aliases.items():
+                match = None
+                # Check for exact or partial keyword match in headers
+                for col in df_raw.columns:
+                    if any(alias in col.lower() for alias in possible_names):
+                        match = col
+                        break
+                
+                # Fallback 1: Broad search for required word
+                if not match:
+                    match = next((col for col in df_raw.columns if req.lower() in col.lower() or col.lower() in req.lower()), None)
+                    
+                # Fallback 2: Index based if missing
                 if match:
                     mapping[req] = match
                 else:
-                    # Fallback to index if within bounds, otherwise None
-                    mapping[req] = df_raw.columns[required.index(req)] if required.index(req) < len(df_raw.columns) else None
+                    idx = list(aliases.keys()).index(req)
+                    mapping[req] = df_raw.columns[idx] if idx < len(df_raw.columns) else None
             
             # Return cleaned and renamed DataFrame
             return df_raw.rename(columns={v: k for k, v in mapping.items()})[required]
@@ -285,12 +304,15 @@ if st.session_state.get("df_final") is not None:
     with col_toolbox:
         with st.popover("??"):
             st.markdown("#### 💡 Quick Guide")
-            st.markdown("##### Step 1: Get your data from Shopee")
-            st.write("""
-            1. Go to [seller.shopee.ph](https://seller.shopee.ph/). 
-            2. Click **'Business Insights'** -> **'Product'** tab.
-            3. Click **'Export Data'** to download your **.CSV** file.
-            """)
+            st.markdown("##### Step 1: Get your CSV Data")
+            st.info("Use a computer or open the link on a browser on desktop mode if using a mobile device.")
+            tab_s, tab_l, tab_t = st.tabs(["Shopee", "Lazada", "TikTok"])
+            with tab_s:
+                st.write("Go to **seller.shopee.ph** > Business Insights > Product tab > Click 'Export Data'.")
+            with tab_l:
+                st.write("Go to **sellercenter.lazada.com.ph** > Data Insights > Products > Click 'Export'.")
+            with tab_t:
+                st.write("Go to **seller-ph.tiktok.com** > Data Compass > Product Analysis > Click 'Export'.")
             st.markdown("##### Step 2: Upload")
             st.write("Click the 'Browse files' button in this sidebar.")
             st.markdown("##### Step 3: Analyze")
@@ -342,9 +364,13 @@ if st.session_state.get("df_final") is not None:
         for _, row in df[df['Current Stock'] <= st.session_state.LOW_STOCK_THRESHOLD].iterrows():
             st.warning(f"⚠️ Reorder: '{row['Product Name']}' has only **{row['Current Stock']}** left.")
     
-    # --- AI GENERATOR ---
+   # --- AI GENERATOR ---
     st.markdown("---")
     st.markdown("### 🧠 AI Marketing Assistant")
+    
+    # Initialize a session state slot to hold the generated text so it doesn't disappear
+    if "generated_marketing_copy" not in st.session_state:
+        st.session_state.generated_marketing_copy = ""
     
     col_sel1, col_sel2 = st.columns(2)
     with col_sel1:
@@ -358,7 +384,7 @@ if st.session_state.get("df_final") is not None:
         )
     
     if not check_feature_access("ai_insights", user_email):
-        st.warning("✨ **You've reached your limit!** Please upgrade to continue generating insights.")
+        st.warning("✨ **You've reached your AI limit!** Mag-upgrade para maka-generate pa ng maraming diskarte.")
         show_pricing_table()
     else:
         if st.button("✨ Generate AI Copy"):
@@ -371,7 +397,6 @@ if st.session_state.get("df_final") is not None:
                 with st.spinner(f'Crafting your {output_format.lower()} via Groq...'):
                     model_target = "llama-3.3-70b-versatile"
                     
-                    # Dynamic Prompt Construction based on User Choice
                     if output_format == "Social Media Caption":
                         prompt = f"""
                         You are an expert e-commerce copywriter. Write an engaging, highly converting social media caption for this product: {target_prod['Product Name']}.
@@ -381,7 +406,7 @@ if st.session_state.get("df_final") is not None:
                         Structure the caption with:
                         1. A strong, scroll-stopping first-line hook.
                         2. Highlights of the product's benefits and value proposition.
-                        3. Strategic incorporation of current stock and scarcity indicators to drive FOMO (Fear of Missing Out).
+                        3. Strategic incorporation of current stock and scarcity indicators to drive FOMO.
                         4. Clear Call-to-Action (CTA) instructing users how to order.
                         5. Relevant, natural emojis and e-commerce hashtags (e.g., #DisCartT #OnlineBusinessPH).
                         Do not summarize too briefly; make it completely copy-paste ready for social channels.
@@ -392,12 +417,12 @@ if st.session_state.get("df_final") is not None:
                         Price: PHP {target_prod['Price (PHP)']}, Current Stock: {target_prod['Current Stock']}, Monthly Sold: {target_prod['Monthly Sold']}.
                         Tone: {st.session_state.brand_tone}.
                         
-                        The script must be written in an authentic, natural mix of Tagalog and English (Taglish) that resonates deeply with local online shoppers, modified slightly to reflect the specified tone ({st.session_state.brand_tone}). Incorporate active performance cues/stage directions inside brackets like [Show the product close to camera, Smile wide, Gesture excitedly].
+                        The script must be written in an authentic, natural mix of Tagalog and English (Taglish) that reflects the specified tone ({st.session_state.brand_tone}). Incorporate active performance cues/stage directions inside brackets like [Show the product close to camera, Smile wide, Gesture excitedly].
                         
                         Structure the script segment with:
                         1. Intro Hook: Grab viewers' attention instantly in the live comments stream.
                         2. Pitch & Demo Description: Explain clearly why viewers must buy this right now. Mention the price points directly.
-                        3. Urgency Push: Leverage the performance metric ({target_prod['Monthly Sold']} items sold this month!) and the inventory bottleneck ({target_prod['Current Stock']} remaining in stock!) to spur instant lock-ins.
+                        3. Urgency Push: Leverage the performance metric ({target_prod['Monthly Sold']} sold this month!) and the inventory bottleneck ({target_prod['Current Stock']} remaining in stock!) to spur instant lock-ins.
                         4. Call-to-Action: Direct them precisely on how to comment "Mine" or check out via the basket.
                         Do not summarize too briefly; provide a comprehensive script a seller can confidently execute live.
                         """
@@ -423,29 +448,40 @@ if st.session_state.get("df_final") is not None:
                     if "error" in result_data:
                         raise Exception(result_data["error"].get("message", "Unknown Groq API Error"))
                         
-                    ai_text = result_data["choices"][0]["message"]["content"]
+                    # Save the response text to session state instead of just drawing it once
+                    st.session_state.generated_marketing_copy = result_data["choices"][0]["message"]["content"]
                 
-                # 2. Update local session usage trackers
+                # Update local session usage trackers
                 st.session_state.ai_usage_count += 1
                 
-                # 3. Synchronize counter with Firestore
+                # Synchronize counter with Firestore
                 if db:
                     db.collection("users").document(user_email).update({
                         "ai_usage_count": st.session_state.ai_usage_count
                     })
                 
-                # Display the complete generated text in the UI
-                st.markdown(ai_text)
+                st.rerun() # Refresh the app to display the newly saved text seamlessly
                 
             except Exception as e:
+                # 1. Log the actual raw error in the backend for your eyes only (debugging)
                 import logging
                 logging.error(f"Groq Generation Error: {e}", exc_info=True)
-                st.error(f"🔴 Generation Failed: {str(e)}")
+                
+                # 2. Display a polished, professional message to the user
+                st.error("We experienced a brief interruption connecting to the AI server. Please try generating your content again in a few moments.")
+                st.info("💡 Tip: If this issue persists, please ensure your internet connection is stable or contact support at grantjaspertaneo@gmail.com.")
+        
+        # Display the text from session_state outside the button block
+        # This keeps it visible even if the user interacts with other sidebar filters!
+        if st.session_state.generated_marketing_copy:
+            with st.container(border=True):
+                st.caption(f"✨ Generated Content for {selected_name} ({output_format}):")
+                st.markdown(st.session_state.generated_marketing_copy)
    
 else:
     # 3. LANDING PAGE
     st.title("🛒 DisCartT Ai")
-    st.subheader("Your AI-powered assistant for smarter inventory and faster sales.")
+    st.subheader("Your AI-powered assistant para sa mas matalinong inventory at mabilis na benta.")
 
     c1, c2, c3 = st.columns(3)
     c1.metric("Status", "Operational", "Online")
@@ -455,25 +491,42 @@ else:
     st.markdown("---")
     st.markdown("### 💡 How to Get Started")
     
-    with st.expander("Step 1: Get your data from Shopee"):
-        st.write("""
-        1. Open your browser and go to [seller.shopee.ph](https://seller.shopee.ph/). *(Note: You must use a computer or browser in desktop mode when using a mobile device. The Shopee mobile app does not support downloading CSV files.)*
-        2. Log in to your shop.
-        3. On the left sidebar, click **'Business Insights'**.
-        4. Select the **'Product'** tab.
-        5. Click the **'Export Data'** button to download the report as a **.CSV** file.
-        """)
+    with st.expander("Step 1: Kumuha ng CSV Data (Shopee, Lazada, TikTok)"):
+        st.write("*(Note: You must use a computer or browser in desktop mode when using a mobile device.)*")
+        tab_s, tab_l, tab_t = st.tabs(["🟠 Shopee", "🔵 Lazada", "⚫ TikTok Shop"])
         
-    with st.expander("Step 2: Upload your file"):
+        with tab_s:
+            st.write("""
+            1. Go to [seller.shopee.ph](https://seller.shopee.ph/). 
+            2. On the left sidebar, click **'Business Insights'**.
+            3. Select the **'Product'** tab.
+            4. Click the **'Export Data'** button to download the report as a **.CSV** file.
+            """)
+        with tab_l:
+            st.write("""
+            1. Go to your Lazada Seller Center.
+            2. Navigate to **Data Insights** > **Products**.
+            3. Adjust your date range (e.g., Last 30 Days).
+            4. Click **'Export'** to download your **.CSV** file.
+            """)
+        with tab_t:
+            st.write("""
+            1. Go to your TikTok Seller Center.
+            2. Navigate to **Data Compass** > **Product Analysis**.
+            3. Adjust your date range.
+            4. Click **'Export'** to download your **.CSV** file.
+            """)
+        
+    with st.expander("Step 2: I-upload ang file"):
         st.write("""
-        1. Click the **'Browse files'** button in the sidebar.
-        2. Upload the CSV file you just downloaded from Shopee.
+        1. I-click ang **'Browse files'** button sa sidebar.
+        2. Upload the CSV file you just downloaded. Ang aming AI na ang bahalang mag-detect kung anong platform ito!
         """)
     
     with st.expander("Step 3: Analyze and Grow"):
         st.write("""
-        1. Use the **'Low Stock Warning Flag'** slider to set your alert level. This allows you to define the minimum number of stocks at which the system will automatically flag for urgent reordering.
-        2. Click **'Analyze My Store'** to see your sales forecast, inventory gaps, and AI-generated social media content! You can even choose the tone for your AI-generated social media content!
+        1. Gamitin ang **'Low Stock Warning Flag'** slider para ma-set kung kailan ka dapat i-alert ng system na mag-restock.
+        2. I-click ang **'Analyze My Store'** para makita ang sales forecast, bodega status, at makagawa ng AI social media content!
         """)
     
     st.markdown("---")
