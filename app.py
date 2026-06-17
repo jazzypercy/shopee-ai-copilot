@@ -235,32 +235,32 @@ if user_email == ADMIN_EMAIL:
 
     st.sidebar.markdown("---")
     st.sidebar.subheader("👥 Registered Users Directory")   
-   if st.sidebar.button("📊 Fetch Active Users List"):
-    try:
-        users_ref = db.collection("users")
-        # Use a list to check if any exist
-        docs = list(users_ref.stream())
-        
-        if not docs:
-            st.sidebar.warning("The 'users' collection is currently empty.")
-        else:
-            user_list = []
-            for doc in docs:
-                u_data = doc.to_dict()
-                user_list.append({
-                    "Email": u_data.get("email"),
-                    "Current Tier": u_data.get("tier"),
-                    "AI Used": u_data.get("ai_usage_count", 0),
-                    "Joined Date": u_data.get("start_time", "")[:10]
-                })
+    if st.sidebar.button("📊 Fetch Active Users List"):
+        try:
+            users_ref = db.collection("users")
+            # Use a list to check if any exist
+            docs = list(users_ref.stream())
             
-            df_users = pd.DataFrame(user_list)
-            dynamic_height = (len(df_users) * 35) + 38
-            st.markdown("### 🛠️ Admin View: User Base Status")
-            st.dataframe(df_users, use_container_width=True, height=dynamic_height)
+            if not docs:
+                st.sidebar.warning("The 'users' collection is currently empty.")
+            else:
+                user_list = []
+                for doc in docs:
+                    u_data = doc.to_dict()
+                    user_list.append({
+                        "Email": u_data.get("email"),
+                        "Current Tier": u_data.get("tier"),
+                        "AI Used": u_data.get("ai_usage_count", 0),
+                        "Joined Date": u_data.get("start_time", "")[:10]
+                    })
+                
+                df_users = pd.DataFrame(user_list)
+                dynamic_height = (len(df_users) * 35) + 38
+                st.markdown("### 🛠️ Admin View: User Base Status")
+                st.dataframe(df_users, use_container_width=True, height=dynamic_height)
             
-    except Exception as e:
-        st.sidebar.error(f"Firestore error: {e}")
+        except Exception as e:
+            st.sidebar.error(f"Firestore error: {e}")
 
 # --- 5 & 6. UNIFIED UI & RUNTIME LOGIC ---
 # 1. CENTRAL DATA PROCESSING ENGINE
