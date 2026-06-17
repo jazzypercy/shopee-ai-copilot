@@ -353,36 +353,69 @@ if st.session_state.get("df_final") is not None:
     else:
         if st.button("Generate AI Insights"):
             try:
-                client = genai.Client(api_key=st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", "")))
-                with st.spinner('Generating...'):
+                # 1. Pull your OpenRouter API Key from secrets
+                # (Make sure to save your openrouter key in your secrets as OPENROUTER_API_KEY)
+                api_key = st.secrets.get("OPENROUTER_API_KEY", "")
+                
+                if not api_key:
+                    st.error("🔑 OpenRouter API Key is missing from your Streamlit secrets!")
+                    st.stop()
+                
+                with st.spinner('Generating free insights...'):
+                    # Target a highly capable, completely free model on OpenRouter
+                    model_target = "meta-llama/llama-3.3-70b-instruct:free"
+                    
                     prompt = f"""
                     Analyze the following product data for {target_prod['Product Name']}. 
+                    Price: PHP {target_prod['Price (PHP)']}, Current Stock: {target_prod['Current Stock']}, Monthly Sold: {target_prod['Monthly Sold']}.
                     Tone: {st.session_state.brand_tone}.
                     Provide a detailed analysis covering: 
                     1. Sales performance relative to current stock.
                     2. Specific reordering advice.
-                    3. A creative social media caption based on the product's ratings.
+                    3. A creative social media caption based on the product's details.
                     Do not summarize too briefly; provide actionable business intelligence.
                     """
-                    response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
+                    
+                    import requests
+                    import json
+
+                    # Send standard HTTP POST request to OpenRouter
+                    response = requests.post(
+                        url="https://openrouter.ai/api/v1/chat/completions",
+                        headers={
+                            "Authorization": f"Bearer {api_key}",
+                            "Content-Type": "application/json"
+                        },
+                        data=json.dumps({
+                            "model": model_target,
+                            "messages": [{"role": "user", "content": prompt}]
+                        })
+                    )
+                    
+                    result_data = response.json()
+                    
+                    # Check if the API returned an error payload
+                    if "error" in result_data:
+                        raise Exception(result_data["error"].get("message", "Unknown API Error"))
+                        
+                    ai_text = result_data["choices"][0]["message"]["content"]
                 
-                # 1. Update local state
+                # 2. Update local tracking state
                 st.session_state.ai_usage_count += 1
                 
-                # 2. Update Firestore
-                db.collection("users").document(user_email).update({
-                    "ai_usage_count": st.session_state.ai_usage_count
-                })
+                # 3. Update your Firestore database
+                if db:
+                    db.collection("users").document(user_email).update({
+                        "ai_usage_count": st.session_state.ai_usage_count
+                    })
                 
-                st.markdown(response.text)
+                # Render the final text out to your workspace
+                st.markdown(ai_text)
+                
             except Exception as e:
-                # Log the actual error to the console for you to see
                 import logging
                 logging.error(f"AI Generation Error: {e}", exc_info=True)
-                
-               # 🔴 Show the ACTUAL error on the UI so you can debug it
-                st.error(f"🔴 System Error: {str(e)}")
-                st.info("The friendly 'busy' message was hiding this error. Check the red box above to see what is actually breaking.")
+                st.error(f"🔴 Generation Failed: {str(e)}")
    
 else:
     # 3. LANDING PAGE
