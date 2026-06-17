@@ -383,6 +383,8 @@ if st.session_state.get("df_final") is not None:
                # 🔴 Show the ACTUAL error on the UI so you can debug it
                 st.error(f"🔴 System Error: {str(e)}")
                 st.info("The friendly 'busy' message was hiding this error. Check the red box above to see what is actually breaking.")
+   
+else:
     # 3. LANDING PAGE
     st.title("🛒 DisCartT Ai")
     st.subheader("Your AI-powered assistant for smarter inventory and faster sales.")
