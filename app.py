@@ -160,40 +160,40 @@ if user_email != ADMIN_EMAIL:
             else:
                 st.sidebar.success(f"💎 Status: {st.session_state.user_tier.capitalize()} Member")
                 st.session_state.trial_active = True # Premium/Starter users are always active
-    
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("👥 Registered Users Directory")
-    
-    if st.sidebar.button("📊 Fetch Active Users List"):
-        try:
-            users_ref = db.collection("users")
-            docs = users_ref.stream()
-            
-            # Put data into a clean structure
-            user_list = []
-            for doc in docs:
-                u_data = doc.to_dict()
-                user_list.append({
-                    "Email": u_data.get("email"),
-                    "Current Tier": u_data.get("tier"),
-                    "AI Used": u_data.get("ai_usage_count", 0),
-                    "Joined Date": u_data.get("start_time", "")[:10] # Shows YYYY-MM-DD
-                })
-            
-            if user_list:
-                # Convert to DataFrame and show on the main dashboard for easy viewing
-                df_users = pd.DataFrame(user_list)
-                st.markdown("### 🛠️ Admin View: User Base Status")
-                dynamic_height = (len(df_users) * 35) + 38
-                st.dataframe(df_users, use_container_width=True, height=dynamic_height)
-            else:
-                st.sidebar.warning("No users found in the database yet.")
-                
-        except Exception as e:
-            st.sidebar.error(f"Could not load directory: {e}")
     else:
-        # User is not a trial user
-        st.sidebar.success(f"💎 Status: {st.session_state.user_tier.capitalize()} Member")
+        if user_email == ADMIN_EMAIL:
+            st.sidebar.markdown("---")
+            st.sidebar.subheader("👥 Registered Users Directory")
+            
+            if st.sidebar.button("📊 Fetch Active Users List"):
+                try:
+                    users_ref = db.collection("users")
+                    docs = users_ref.stream()
+                    
+                    # Put data into a clean structure
+                    user_list = []
+                    for doc in docs:
+                        u_data = doc.to_dict()
+                        user_list.append({
+                            "Email": u_data.get("email"),
+                            "Current Tier": u_data.get("tier"),
+                            "AI Used": u_data.get("ai_usage_count", 0),
+                            "Joined Date": u_data.get("start_time", "")[:10] # Shows YYYY-MM-DD
+                        })
+                    
+                    if user_list:
+                        # Convert to DataFrame and show on the main dashboard for easy viewing
+                        df_users = pd.DataFrame(user_list)
+                        st.markdown("### 🛠️ Admin View: User Base Status")
+                        dynamic_height = (len(df_users) * 35) + 38
+                        st.dataframe(df_users, use_container_width=True, height=dynamic_height)
+                    else:
+                        st.sidebar.warning("No users found in the database yet.")
+                        
+                except Exception as e:
+                    st.sidebar.error(f"Could not load directory: {e}")
+            else:
+                st.sidebar.success(f"💎 Status: {st.session_state.user_tier.capitalize()} Member")
 
 # B. File Upload & Tools
 uploaded_file = None
