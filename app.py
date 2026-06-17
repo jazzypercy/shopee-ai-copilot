@@ -380,9 +380,9 @@ if st.session_state.get("df_final") is not None:
                 import logging
                 logging.error(f"AI Generation Error: {e}", exc_info=True)
                 
-                # Show only the friendly message to the user
-                st.error("🙏 Our AI assistant is currently at maximum capacity. Please try again in a moment.")
-else:
+               # 🔴 Show the ACTUAL error on the UI so you can debug it
+                st.error(f"🔴 System Error: {str(e)}")
+                st.info("The friendly 'busy' message was hiding this error. Check the red box above to see what is actually breaking.")
     # 3. LANDING PAGE
     st.title("🛒 DisCartT Ai")
     st.subheader("Your AI-powered assistant for smarter inventory and faster sales.")
