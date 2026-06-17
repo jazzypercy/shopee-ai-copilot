@@ -343,43 +343,68 @@ if st.session_state.get("df_final") is not None:
             st.warning(f"⚠️ Reorder: '{row['Product Name']}' has only **{row['Current Stock']}** left.")
     
     # --- AI GENERATOR ---
-    st.markdown("### 🧠 AI Content Generator")
-    selected_name = st.selectbox("Select product:", df['Product Name'].tolist())
-    target_prod = df[df['Product Name'] == selected_name].iloc[0]
+    st.markdown("---")
+    st.markdown("### 🧠 AI Marketing Assistant")
+    
+    col_sel1, col_sel2 = st.columns(2)
+    with col_sel1:
+        selected_name = st.selectbox("Select product to market:", df['Product Name'].tolist())
+        target_prod = df[df['Product Name'] == selected_name].iloc[0]
+    with col_sel2:
+        output_format = st.radio(
+            "Choose Marketing Content Type:",
+            ["Social Media Caption", "Live Selling Script"],
+            horizontal=True
+        )
     
     if not check_feature_access("ai_insights", user_email):
         st.warning("✨ **You've reached your limit!** Please upgrade to continue generating insights.")
         show_pricing_table()
     else:
-        if st.button("Generate AI Insights"):
+        if st.button("✨ Generate AI Copy"):
             try:
-                # 1. Grab your Groq API Key from secrets
-                # (Save your key in Streamlit secrets as GROQ_API_KEY)
                 api_key = st.secrets.get("GROQ_API_KEY", "")
-                
                 if not api_key:
                     st.error("🔑 GROQ_API_KEY is missing from your Streamlit secrets!")
                     st.stop()
                 
-                with st.spinner('Generating fast business insights via Groq...'):
-                    # Using Llama 3.3 70B on Groq's high-speed infrastructure
+                with st.spinner(f'Crafting your {output_format.lower()} via Groq...'):
                     model_target = "llama-3.3-70b-versatile"
                     
-                    prompt = f"""
-                    Analyze the following product data for {target_prod['Product Name']}. 
-                    Price: PHP {target_prod['Price (PHP)']}, Current Stock: {target_prod['Current Stock']}, Monthly Sold: {target_prod['Monthly Sold']}.
-                    Tone: {st.session_state.brand_tone}.
-                    Provide a detailed analysis covering: 
-                    1. Sales performance relative to current stock.
-                    2. Specific reordering advice.
-                    3. A creative social media caption based on the product's details.
-                    Do not summarize too briefly; provide actionable business intelligence.
-                    """
+                    # Dynamic Prompt Construction based on User Choice
+                    if output_format == "Social Media Caption":
+                        prompt = f"""
+                        You are an expert e-commerce copywriter. Write an engaging, highly converting social media caption for this product: {target_prod['Product Name']}.
+                        Price: PHP {target_prod['Price (PHP)']}, Current Stock: {target_prod['Current Stock']}, Monthly Sold: {target_prod['Monthly Sold']}.
+                        Tone: {st.session_state.brand_tone}.
+                        
+                        Structure the caption with:
+                        1. A strong, scroll-stopping first-line hook.
+                        2. Highlights of the product's benefits and value proposition.
+                        3. Strategic incorporation of current stock and scarcity indicators to drive FOMO (Fear of Missing Out).
+                        4. Clear Call-to-Action (CTA) instructing users how to order.
+                        5. Relevant, natural emojis and e-commerce hashtags (e.g., #DisCartT #OnlineBusinessPH).
+                        Do not summarize too briefly; make it completely copy-paste ready for social channels.
+                        """
+                    else:  # Live Selling Script
+                        prompt = f"""
+                        You are a high-energy, persuasive Filipino live selling host. Write an engaging live selling script segment for this product: {target_prod['Product Name']}.
+                        Price: PHP {target_prod['Price (PHP)']}, Current Stock: {target_prod['Current Stock']}, Monthly Sold: {target_prod['Monthly Sold']}.
+                        Tone: {st.session_state.brand_tone}.
+                        
+                        The script must be written in an authentic, natural mix of Tagalog and English (Taglish) that resonates deeply with local online shoppers, modified slightly to reflect the specified tone ({st.session_state.brand_tone}). Incorporate active performance cues/stage directions inside brackets like [Show the product close to camera, Smile wide, Gesture excitedly].
+                        
+                        Structure the script segment with:
+                        1. Intro Hook: Grab viewers' attention instantly in the live comments stream.
+                        2. Pitch & Demo Description: Explain clearly why viewers must buy this right now. Mention the price points directly.
+                        3. Urgency Push: Leverage the performance metric ({target_prod['Monthly Sold']} items sold this month!) and the inventory bottleneck ({target_prod['Current Stock']} remaining in stock!) to spur instant lock-ins.
+                        4. Call-to-Action: Direct them precisely on how to comment "Mine" or check out via the basket.
+                        Do not summarize too briefly; provide a comprehensive script a seller can confidently execute live.
+                        """
                     
                     import requests
                     import json
 
-                    # Direct call to Groq's stable OpenAI-compatible endpoint
                     response = requests.post(
                         url="https://api.groq.com/openai/v1/chat/completions",
                         headers={
@@ -395,7 +420,6 @@ if st.session_state.get("df_final") is not None:
                     
                     result_data = response.json()
                     
-                    # Intercept any direct API errors returned by Groq
                     if "error" in result_data:
                         raise Exception(result_data["error"].get("message", "Unknown Groq API Error"))
                         
@@ -425,7 +449,7 @@ else:
 
     c1, c2, c3 = st.columns(3)
     c1.metric("Status", "Operational", "Online")
-    c2.metric("Model", "Gemini 2.0", "Flash")
+    c2.metric("Model", "Llama 3.3", "Flash")
     c3.metric("Database", "Firestore", "Secure")
         
     st.markdown("---")
