@@ -257,8 +257,8 @@ if user_email == ADMIN_EMAIL:
             else:
                 st.sidebar.warning("No users found in the database yet.")
                         
-            except Exception as e:
-                st.sidebar.error(f"Could not load directory: {e}")
+        except Exception as e:
+            st.sidebar.error(f"Could not load directory: {e}")
 
 # --- 5 & 6. UNIFIED UI & RUNTIME LOGIC ---
 # 1. CENTRAL DATA PROCESSING ENGINE
