@@ -253,6 +253,7 @@ if user_email == ADMIN_EMAIL:
                 df_users = pd.DataFrame(user_list)
                 st.markdown("### 🛠️ Admin View: User Base Status")
                 dynamic_height = (len(df_users) * 35) + 38
+                dynamic_height = (len(df_users) * 35) + 38
                 st.dataframe(df_users, use_container_width=True, height=dynamic_height)
             else:
                 st.sidebar.warning("No users found in the database yet.")
