@@ -54,19 +54,19 @@ def check_feature_access(feature_name, email):
     return False
 
 def show_pricing_table():
-    st.markdown("### 💎 I-Level Up ang Diskarte (Unlock Full Potential)")
+    st.markdown("### 💎 I-Level Up ang Diskarte (Unlock the full potential of DisCartT AI)")
     st.info("💳 **Secure payments via GCash, Maya, and Credit/Debit Cards coming soon!**")
     col1, col2 = st.columns(2)
     
     with col1:
         st.subheader("Starter")
-        st.write("₱499 / mo")
+        st.write("₱499 / month")
         st.markdown("- 30 AI Insights/mo\n- 7-Day Forecast")
         st.link_button("Upgrade to Starter", "YOUR_PAYMONGO_STARTER_LINK_HERE", use_container_width=True)
         
     with col2:
         st.subheader("Premium")
-        st.write("₱699 / mo")
+        st.write("₱699 / month")
         st.markdown("- Unlimited AI Insights\n- 30-Day Forecast")
         st.link_button("Upgrade to Premium", "YOUR_PAYMONGO_PREMIUM_LINK_HERE", type="primary", use_container_width=True)
     
@@ -85,7 +85,7 @@ if not st.user.is_logged_in:
         st.info("✅ **Marketing Content Generation**")
         st.info("✅ **Inventory Insights**")
         
-    st.button("🚀 Sign in with Google para masimulan ang iyong 3-Day Trial", on_click=st.login, args=("google",), type="primary")
+    st.button("🚀 Sign in with Google para masimulan ang iyong 7-Day Free Use.", on_click=st.login, args=("google",), type="primary")
     st.stop()
 
 # Safely extract email using the dict method
@@ -143,45 +143,82 @@ if user_email != ADMIN_EMAIL:
     # Check if the user is in trial mode
     if st.session_state.user_tier == "trial":
         if "trial_start_time" in st.session_state:
-            # FIX: Ensure both 'now' and 'start' are timezone-naive to avoid subtraction errors
             now = datetime.datetime.now()
             start = st.session_state.trial_start_time
-            
-            # If the start_time is timezone-aware, we strip it; otherwise, we leave it
+         
             if start.tzinfo is not None:
                 start = start.replace(tzinfo=None)
             
             elapsed = now - start
-            remaining = datetime.timedelta(days=3) - elapsed
+            remaining = datetime.timedelta(days=7) - elapsed
             
             if remaining.total_seconds() > 0:
-                h, r = divmod(int(remaining.total_seconds()), 3600)
-                m, _ = divmod(r, 60)
-                st.sidebar.info(f"⏳ Trial ends in: **{h}h {m}m**")
+                d = remaining.days
+                h, r = divmod(int(remaining.seconds), 3600)
+                st.sidebar.info(f"⏳ Libreng Trial ends in: **{d}d {h}h**")
+                st.session_state.trial_active = True # Explicitly declare trial is alive
             else:
-                st.sidebar.error("Trial expired.")
-                st.session_state.trial_active = False
-                # Optional: You can update the database tier to 'expired' here
+                st.sidebar.success(f"💎 Status: {st.session_state.user_tier.capitalize()} Member")
+                st.session_state.trial_active = True # Premium/Starter users are always active
+    
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("👥 Registered Users Directory")
+    
+    if st.sidebar.button("📊 Fetch Active Users List"):
+        try:
+            users_ref = db.collection("users")
+            docs = users_ref.stream()
+            
+            # Put data into a clean structure
+            user_list = []
+            for doc in docs:
+                u_data = doc.to_dict()
+                user_list.append({
+                    "Email": u_data.get("email"),
+                    "Current Tier": u_data.get("tier"),
+                    "AI Used": u_data.get("ai_usage_count", 0),
+                    "Joined Date": u_data.get("start_time", "")[:10] # Shows YYYY-MM-DD
+                })
+            
+            if user_list:
+                # Convert to DataFrame and show on the main dashboard for easy viewing
+                df_users = pd.DataFrame(user_list)
+                st.markdown("### 🛠️ Admin View: User Base Status")
+                st.dataframe(df_users, use_container_width=True)
+            else:
+                st.sidebar.warning("No users found in the database yet.")
+                
+        except Exception as e:
+            st.sidebar.error(f"Could not load directory: {e}")
     else:
         # User is not a trial user
         st.sidebar.success(f"💎 Status: {st.session_state.user_tier.capitalize()} Member")
 
 # B. File Upload & Tools
-uploaded_file = st.sidebar.file_uploader("Please upload your CSV file here.", type=["csv"])
+uploaded_file = None
+run_analysis = False
 
-@st.cache_data
-def get_sample_csv_template():
-    return pd.DataFrame({
-        "Product Name": ["Natural Shampoo", "Body Lotion 20X", "Niacinamide Soap", "Brightening Sunscreen"],
-        "Price (PHP)": [158.0, 115.0, 59.0, 159.0],
-        "Current Stock": [14, 142, 8, 410],
-        "Monthly Sold": [340, 510, 1200, 850],
-        "Rating": [4.8, 4.9, 4.9, 4.7]
-    }).to_csv(index=False).encode('utf-8')
+# Only show upload capabilities if the user's trial/membership is active
+if st.session_state.get("trial_active", True):
+    st.sidebar.markdown("### 📁 I-upload ang Data")
+    uploaded_file = st.sidebar.file_uploader("Please upload your CSV file here/", type=["csv"])
 
-st.sidebar.download_button("📥 Download CSV Template", get_sample_csv_template(), "template.csv", "text/csv")
-st.session_state.LOW_STOCK_THRESHOLD = st.sidebar.slider("Low Stock Warning Flag", 5, 1000, st.session_state.LOW_STOCK_THRESHOLD)
-run_analysis = st.sidebar.button("Analyze My Store", type="primary", use_container_width=True)
+    @st.cache_data
+    def get_sample_csv_template():
+        return pd.DataFrame({
+            "Product Name": ["Natural Shampoo", "Body Lotion 20X", "Niacinamide Soap", "Brightening Sunscreen"],
+            "Price (PHP)": [158.0, 115.0, 59.0, 159.0],
+            "Current Stock": [14, 142, 8, 410],
+            "Monthly Sold": [340, 510, 1200, 850],
+            "Rating": [4.8, 4.9, 4.9, 4.7]
+        }).to_csv(index=False).encode('utf-8')
+
+    st.sidebar.download_button("📥 Download CSV Template", get_sample_csv_template(), "template.csv", "text/csv")
+    st.session_state.LOW_STOCK_THRESHOLD = st.sidebar.slider("🚨 Low Stock Warning Flag (Kailan mag-aalert?)", 5, 1000, st.session_state.LOW_STOCK_THRESHOLD)
+    run_analysis = st.sidebar.button("🔍 Analyze My Store", type="primary", use_container_width=True)
+else:
+    st.sidebar.markdown("---")
+    st.sidebar.warning("🔒 **Features Locked**\n\nTapos na ang iyong 7-day access. Pleasse upgrade your subscription para ma-unlock muli ang file upload at tools.")
 
 # C. Brand Tone
 st.sidebar.markdown("---")
@@ -278,16 +315,26 @@ def process_data(file_obj=None, use_demo=False):
 
 # 2. TRIGGER LOGIC: Detects user intent
 if run_analysis or st.session_state.get("demo_mode", False):
-    use_demo = st.session_state.get("demo_mode", False)
-    result = process_data(file_obj=uploaded_file, use_demo=use_demo)
     
-    if result is not None:
-        st.session_state.df_final = result
-        st.session_state.demo_mode = False 
+    # NEW: STRICT LOCKOUT RULE
+    # If they are a trial user AND their trial is no longer active, stop them here.
+    if st.session_state.user_tier == "trial" and not st.session_state.get("trial_active", True):
+        st.error("🔒 **Tapos na ang 7-Day Free Trial mo.** I-upgrade ang account para patuloy na magamit ang DisCartT AI at hindi ma-ubusan ng stock!")
+        show_pricing_table() # Show the payment buttons immediately
+        st.session_state.df_final = None # Clear any existing data
+        
     else:
-        if run_analysis: 
-            st.session_state.df_final = None
-            st.warning("⚠️ Please upload a CSV file or enable Demo Mode first.")
+        # Normal operations continue untouched
+        use_demo = st.session_state.get("demo_mode", False)
+        result = process_data(file_obj=uploaded_file, use_demo=use_demo)
+        
+        if result is not None:
+            st.session_state.df_final = result
+            st.session_state.demo_mode = False 
+        else:
+            if run_analysis: 
+                st.session_state.df_final = None
+                st.warning("⚠️ Please upload a CSV file or enable Demo Mode first.")
 
 # 3. DASHBOARD DISPLAY OR LANDING PAGE 
 if st.session_state.get("df_final") is not None:
@@ -517,10 +564,10 @@ else:
             4. Click **'Export'** to download your **.CSV** file.
             """)
         
-    with st.expander("Step 2: I-upload ang file"):
+    with st.expander("Step 2: Upload the CSV file"):
         st.write("""
-        1. I-click ang **'Browse files'** button sa sidebar.
-        2. Upload the CSV file you just downloaded. Ang aming AI na ang bahalang mag-detect kung anong platform ito!
+        1. I-click ang **'Upload'** button sa sidebar.
+        2. I-upload the CSV file you just downloaded. Ang aming AI na ang bahalang mag-detect kung anong platform ito!
         """)
     
     with st.expander("Step 3: Analyze and Grow"):
