@@ -353,17 +353,17 @@ if st.session_state.get("df_final") is not None:
     else:
         if st.button("Generate AI Insights"):
             try:
-                # 1. Pull your OpenRouter API Key from secrets
-                # (Make sure to save your openrouter key in your secrets as OPENROUTER_API_KEY)
-                api_key = st.secrets.get("OPENROUTER_API_KEY", "")
+                # 1. Grab your Groq API Key from secrets
+                # (Save your key in Streamlit secrets as GROQ_API_KEY)
+                api_key = st.secrets.get("GROQ_API_KEY", "")
                 
                 if not api_key:
-                    st.error("🔑 OpenRouter API Key is missing from your Streamlit secrets!")
+                    st.error("🔑 GROQ_API_KEY is missing from your Streamlit secrets!")
                     st.stop()
                 
-                with st.spinner('Generating free insights...'):
-                    # Target a highly capable, completely free model on OpenRouter
-                    model_target = "meta-llama/llama-3.3-70b-instruct:free"
+                with st.spinner('Generating fast business insights via Groq...'):
+                    # Using Llama 3.3 70B on Groq's high-speed infrastructure
+                    model_target = "llama-3.3-70b-versatile"
                     
                     prompt = f"""
                     Analyze the following product data for {target_prod['Product Name']}. 
@@ -379,42 +379,43 @@ if st.session_state.get("df_final") is not None:
                     import requests
                     import json
 
-                    # Send standard HTTP POST request to OpenRouter
+                    # Direct call to Groq's stable OpenAI-compatible endpoint
                     response = requests.post(
-                        url="https://openrouter.ai/api/v1/chat/completions",
+                        url="https://api.groq.com/openai/v1/chat/completions",
                         headers={
                             "Authorization": f"Bearer {api_key}",
                             "Content-Type": "application/json"
                         },
                         data=json.dumps({
                             "model": model_target,
-                            "messages": [{"role": "user", "content": prompt}]
+                            "messages": [{"role": "user", "content": prompt}],
+                            "temperature": 0.7
                         })
                     )
                     
                     result_data = response.json()
                     
-                    # Check if the API returned an error payload
+                    # Intercept any direct API errors returned by Groq
                     if "error" in result_data:
-                        raise Exception(result_data["error"].get("message", "Unknown API Error"))
+                        raise Exception(result_data["error"].get("message", "Unknown Groq API Error"))
                         
                     ai_text = result_data["choices"][0]["message"]["content"]
                 
-                # 2. Update local tracking state
+                # 2. Update local session usage trackers
                 st.session_state.ai_usage_count += 1
                 
-                # 3. Update your Firestore database
+                # 3. Synchronize counter with Firestore
                 if db:
                     db.collection("users").document(user_email).update({
                         "ai_usage_count": st.session_state.ai_usage_count
                     })
                 
-                # Render the final text out to your workspace
+                # Display the complete generated text in the UI
                 st.markdown(ai_text)
                 
             except Exception as e:
                 import logging
-                logging.error(f"AI Generation Error: {e}", exc_info=True)
+                logging.error(f"Groq Generation Error: {e}", exc_info=True)
                 st.error(f"🔴 Generation Failed: {str(e)}")
    
 else:
