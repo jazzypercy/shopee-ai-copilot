@@ -184,7 +184,8 @@ if user_email != ADMIN_EMAIL:
                 # Convert to DataFrame and show on the main dashboard for easy viewing
                 df_users = pd.DataFrame(user_list)
                 st.markdown("### 🛠️ Admin View: User Base Status")
-                st.dataframe(df_users, use_container_width=True)
+                dynamic_height = (len(df_users) * 35) + 38
+                st.dataframe(df_users, use_container_width=True, height=dynamic_height)
             else:
                 st.sidebar.warning("No users found in the database yet.")
                 
