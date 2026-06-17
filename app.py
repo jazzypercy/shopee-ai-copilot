@@ -101,28 +101,31 @@ if not user_email:
 
 # --- 3. SYNC USER TIER & USAGE FROM FIRESTORE ---
 if db:
-    user_doc_ref = db.collection("users").document(user_email)
-    doc = user_doc_ref.get()
-    
-    if doc.exists:
-        data = doc.to_dict()
-        # Load from Firestore instead of defaulting to 0
-        st.session_state.user_tier = data.get("tier", "trial")
-        st.session_state.ai_usage_count = data.get("ai_usage_count", 0) 
+    try:
+        user_doc_ref = db.collection("users").document(user_email)
+        doc = user_doc_ref.get()
         
-        if "start_time" in data:
-            st.session_state.trial_start_time = datetime.datetime.fromisoformat(data["start_time"])
-    else:
-        # First time user: Initialize with 0
+        if doc.exists:
+            data = doc.to_dict()
+            st.session_state.user_tier = data.get("tier", "trial")
+            st.session_state.ai_usage_count = data.get("ai_usage_count", 0) 
+            if "start_time" in data:
+                st.session_state.trial_start_time = datetime.datetime.fromisoformat(data["start_time"])
+        else:
+            # First time user: Initialize with 0
+            st.session_state.user_tier = "trial"
+            st.session_state.ai_usage_count = 0
+            st.session_state.trial_start_time = datetime.datetime.now()
+            user_doc_ref.set({
+                "email": user_email,
+                "tier": "trial",
+                "ai_usage_count": 0,
+                "start_time": st.session_state.trial_start_time.isoformat()
+            })
+    except Exception as e:
+        # If collection doesn't exist, this catches the error
+        st.warning("⚠️ Database initialization required. Initializing user profile...")
         st.session_state.user_tier = "trial"
-        st.session_state.ai_usage_count = 0
-        st.session_state.trial_start_time = datetime.datetime.now()
-        user_doc_ref.set({
-            "email": user_email,
-            "tier": "trial",
-            "ai_usage_count": 0,
-            "start_time": st.session_state.trial_start_time.isoformat()
-        })
         
 # --- 3. DATA HELPERS ---
 def get_mock_data(username):
@@ -232,12 +235,15 @@ if user_email == ADMIN_EMAIL:
 
     st.sidebar.markdown("---")
     st.sidebar.subheader("👥 Registered Users Directory")   
-    if st.sidebar.button("📊 Fetch Active Users List"):
-        try:
-            users_ref = db.collection("users")
-            docs = users_ref.stream()
-                    
-            # Put data into a clean structure
+   if st.sidebar.button("📊 Fetch Active Users List"):
+    try:
+        users_ref = db.collection("users")
+        # Use a list to check if any exist
+        docs = list(users_ref.stream())
+        
+        if not docs:
+            st.sidebar.warning("The 'users' collection is currently empty.")
+        else:
             user_list = []
             for doc in docs:
                 u_data = doc.to_dict()
@@ -245,21 +251,16 @@ if user_email == ADMIN_EMAIL:
                     "Email": u_data.get("email"),
                     "Current Tier": u_data.get("tier"),
                     "AI Used": u_data.get("ai_usage_count", 0),
-                    "Joined Date": u_data.get("start_time", "")[:10] # Shows YYYY-MM-DD
+                    "Joined Date": u_data.get("start_time", "")[:10]
                 })
-                    
-            if user_list:
-                # Convert to DataFrame and show on the main dashboard for easy viewing
-                df_users = pd.DataFrame(user_list)
-                st.markdown("### 🛠️ Admin View: User Base Status")
-                dynamic_height = (len(df_users) * 35) + 38
-                dynamic_height = (len(df_users) * 35) + 38
-                st.dataframe(df_users, use_container_width=True, height=dynamic_height)
-            else:
-                st.sidebar.warning("No users found in the database yet.")
-                        
-        except Exception as e:
-            st.sidebar.error(f"Could not load directory: {e}")
+            
+            df_users = pd.DataFrame(user_list)
+            dynamic_height = (len(df_users) * 35) + 38
+            st.markdown("### 🛠️ Admin View: User Base Status")
+            st.dataframe(df_users, use_container_width=True, height=dynamic_height)
+            
+    except Exception as e:
+        st.sidebar.error(f"Firestore error: {e}")
 
 # --- 5 & 6. UNIFIED UI & RUNTIME LOGIC ---
 # 1. CENTRAL DATA PROCESSING ENGINE
